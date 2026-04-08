@@ -1,0 +1,37 @@
+{
+  "apiVersion": 3,
+  "name": "test/block",
+  "version": "1.0.0",
+  "title": "TestBlock",
+  "category": "layout",
+  "icon": "smiley",
+  "description": "A test block for development and testing purposes.",
+  "keywords": ["test", "development"],
+  "textdomain": "wp-vite-blocks",
+  "supports": {
+    "color": {
+      "background": false,
+      "gradients": true,
+      "text": true
+    },
+    "typography": {
+      "fontSize": true,
+      "lineHeight": true
+    },
+    "shadow": true
+  },
+  "attributes": {
+    "blockId": {
+      "type": "string",
+      "default": "test"
+    },
+    "layout": {
+      "type": "string",
+      "default": "content"
+    },
+    "test": {
+      "type": "string",
+      "default": "test"
+    }
+  }
+}

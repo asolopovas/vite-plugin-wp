@@ -1,5 +1,7 @@
 # @asolopovas/vite-plugin-wp
 
+> ⚠️ **Experimental — AI-assisted code.** This plugin was substantially written with the help of an LLM. It works for the author's own wp-vite-blocks setup, but it is not battle-tested across diverse WordPress/Vite projects and may contain bugs or rough edges. Expect breaking changes. Use at your own risk, pin the version, and please file issues with reproductions.
+
 Vite plugin for WordPress block and theme development.
 
 ## Features
