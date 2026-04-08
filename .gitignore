@@ -1,6 +1,6 @@
-.yarn/**
-/node_modules/
-/inertia-helpers/
-/npm-debug.log
-/package-lock.json
-.pnp.*
+node_modules
+dist
+*.log
+.DS_Store
+bun.lock
+bun.lockb

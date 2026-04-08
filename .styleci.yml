@@ -1,5 +1,0 @@
-php:
-  preset: gutenberg
-js: true
-css: true
-ts: true

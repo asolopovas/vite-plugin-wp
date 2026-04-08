@@ -1,50 +1,60 @@
 {
-    "name": "gutenberg-vite-plugin",
+    "name": "@asolopovas/vite-plugin-wp",
     "version": "0.1.0",
-    "description": "Gutenberg plugin for Vite.",
-    "keywords": [
-        "gutenberg",
-        "vite",
-        "vite-plugin"
-    ],
-    "homepage": "https://github.com/asolopovas/vite-gutenberg",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/asolopovas/vite-gutenberg"
+    "description": "Vite plugin for WordPress block and theme development with HMR, WP global shimming, and dev-mode env sync.",
+    "type": "module",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
     },
-    "license": "MIT",
-    "author": "gutenberg",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
     "files": [
-        "/dist",
-        "/inertia-helpers"
+        "dist",
+        "src/templates",
+        "src/shims",
+        "README.md",
+        "LICENSE"
     ],
     "scripts": {
-        "build": "npm run build-plugin && npm run build-inertia-helpers",
-        "build-plugin": "rm -rf dist && tsc && cp src/dev-server-index.html dist/",
-        "build-inertia-helpers": "rm -rf inertia-helpers && tsc --project tsconfig.inertia-helpers.json",
-        "lint": "eslint --ext .ts ./src ./tests",
-        "test": "vitest run",
-        "test-watch": "vitest"
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "test": "bun test",
+        "typecheck": "tsc --noEmit",
+        "prepublishOnly": "bun run build && bun run test && bun run typecheck"
     },
-    "devDependencies": {
-        "@types/node": "^17.0.31",
-        "@typescript-eslint/eslint-plugin": "^5.21.0",
-        "@typescript-eslint/parser": "^5.21.0",
-        "eslint": "^8.14.0",
-        "picocolors": "^1.0.0",
-        "typescript": "^4.6.4",
-        "vite": "^3.0.0",
-        "vitest": "^0.12.4"
-    },
-    "peerDependencies": {
-        "vite": "^3.0.0"
+    "keywords": [
+        "vite",
+        "vite-plugin",
+        "wordpress",
+        "gutenberg",
+        "blocks",
+        "hmr"
+    ],
+    "author": "Andrius Solopovas",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/asolopovas/vite-plugin-wp.git"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=20"
     },
-    "dependencies": {
-        "vite-plugin-full-reload": "^1.0.1"
+    "peerDependencies": {
+        "vite": ">=8"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "@types/node": "^22",
+        "jsdom": "^25",
+        "tsup": "^8",
+        "typescript": "^5.6",
+        "vite": "^8"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
