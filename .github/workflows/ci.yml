@@ -26,6 +26,6 @@ jobs:
                 key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
             - run: bun install --frozen-lockfile
+            - run: bun run build
             - run: bun run test
             - run: bun run typecheck
-            - run: bun run build
