@@ -53,13 +53,14 @@ jobs:
                 path: ~/.cache/ms-playwright
                 key: playwright-v2-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
-            - name: Install deps & start wp-env
+            - name: Install bun deps
+              if: steps.bun-cache.outputs.cache-hit != 'true'
+              run: bun install --frozen-lockfile
+
+            - name: Start wp-env & install Playwright
               run: |
-                bunx wp-env start --xdebug=off &
+                ./node_modules/.bin/wp-env start --xdebug=off &
                 WP_ENV_PID=$!
-                if [ "${{ steps.bun-cache.outputs.cache-hit }}" != "true" ]; then
-                  bun install --frozen-lockfile
-                fi
                 if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
                   ./node_modules/.bin/playwright install chromium chromium-headless-shell
                 fi
