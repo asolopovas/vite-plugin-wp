@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help install build dev test typecheck check clean \
+.PHONY: help install build dev test test-unit typecheck check clean \
         release release-patch release-minor release-major \
         bump tag publish gh-release
 
@@ -12,7 +12,8 @@ help:
 	@echo "  install           bun install"
 	@echo "  build             bun run build"
 	@echo "  dev               bun run dev (tsup --watch)"
-	@echo "  test              bun run test (unit)"
+	@echo "  test              unit + e2e (everything)"
+	@echo "  test-unit         unit only"
 	@echo "  typecheck         tsc --noEmit"
 	@echo "  check             test + typecheck + build (release gate)"
 	@echo "  clean             remove dist/"
@@ -42,11 +43,15 @@ dev:
 
 test:
 	bun run test
+	bun run test:e2e
+
+test-unit:
+	bun run test
 
 typecheck:
 	bun run typecheck
 
-check: test typecheck build
+check: test-unit typecheck build
 
 clean:
 	rm -rf dist
