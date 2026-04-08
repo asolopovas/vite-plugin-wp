@@ -94,7 +94,7 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
 
     const applyLoaderPromise = typeof window.__wpvBlockHmrApply === 'function'
         ? Promise.resolve(window.__wpvBlockHmrApply)
-        : import(/* @vite-ignore */ '/@id/virtual:vite-plugin-wp/block-hmr').then((mod) => mod.applyBlockHmr)
+        : import('virtual:vite-plugin-wp/block-hmr').then((mod) => mod.applyBlockHmr)
 
     const loadModule = () => loader(`${withOrigin(cleanPath)}?t=${timestamp}`)
 
