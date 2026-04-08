@@ -1,0 +1,31 @@
+name: CI
+
+on:
+    push:
+        paths-ignore:
+            - '**.md'
+    pull_request:
+        paths-ignore:
+            - '**.md'
+    workflow_dispatch:
+
+jobs:
+    bun-tests:
+        runs-on: ubuntu-latest
+        name: Unit Tests, Type Check & Build
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                bun-version: latest
+
+            - uses: actions/cache@v4
+              with:
+                path: node_modules
+                key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+            - run: bun install --frozen-lockfile
+            - run: bun run test
+            - run: bun run typecheck
+            - run: bun run build

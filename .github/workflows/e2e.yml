@@ -1,0 +1,87 @@
+name: E2E Tests
+
+on:
+    push:
+        paths:
+            - 'src/**'
+            - 'tests/**'
+            - 'playwright.config.*'
+            - 'tsup.config.*'
+            - 'package.json'
+            - 'bun.lock'
+            - '.wp-env.json'
+            - '.github/workflows/e2e.yml'
+    pull_request:
+        paths:
+            - 'src/**'
+            - 'tests/**'
+            - 'playwright.config.*'
+            - 'tsup.config.*'
+            - 'package.json'
+            - 'bun.lock'
+            - '.wp-env.json'
+            - '.github/workflows/e2e.yml'
+    workflow_dispatch:
+
+concurrency:
+    group: e2e-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    wp-env:
+        runs-on: ubuntu-latest
+        name: E2E Tests${{ github.event_name == 'workflow_dispatch' && ' (manual)' || '' }}
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'test:')
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                bun-version: latest
+
+            - name: Cache node_modules
+              id: bun-cache
+              uses: actions/cache@v4
+              with:
+                path: node_modules
+                key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+            - name: Cache Playwright browsers
+              id: playwright-cache
+              uses: actions/cache@v4
+              with:
+                path: ~/.cache/ms-playwright
+                key: playwright-v2-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+            - name: Install deps & start wp-env
+              run: |
+                bunx wp-env start --xdebug=off &
+                WP_ENV_PID=$!
+                if [ "${{ steps.bun-cache.outputs.cache-hit }}" != "true" ]; then
+                  bun install --frozen-lockfile
+                fi
+                if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+                  ./node_modules/.bin/playwright install chromium chromium-headless-shell
+                fi
+                ./node_modules/.bin/playwright install-deps chromium
+                wait "$WP_ENV_PID"
+
+            - name: Build plugin
+              run: bun run build
+
+            - name: Run E2E tests
+              run: bun run test:e2e -- --retries=0
+
+            - name: Upload test artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                name: e2e-artifacts
+                path: |
+                  test-results/
+                  playwright-report/
+                retention-days: 7
+
+            - name: Stop wp-env
+              if: always()
+              run: bunx wp-env stop
