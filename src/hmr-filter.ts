@@ -41,7 +41,12 @@ export function hmrFilterPlugin(baseDir: string): Plugin {
         }
 
         if (JS_LIKE_EXTENSION.test(cleanFile)) {
-            const cssResult = await ctx.server.transformRequest(EDITOR_CSS_URL)
+            let cssResult: { code?: string } | null = null
+            try {
+                cssResult = await ctx.server.transformRequest(EDITOR_CSS_URL)
+            } catch {
+                cssResult = null
+            }
             if (cssResult?.code) {
                 const nextHash = generateContentHash(cssResult.code)
                 const prevHash = cssOutputHashes.get(EDITOR_CSS_URL)

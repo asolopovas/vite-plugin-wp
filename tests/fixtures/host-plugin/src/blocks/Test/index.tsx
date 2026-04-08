@@ -1,7 +1,6 @@
 import { registerBlockType } from '@wordpress/blocks'
 import { useRef, useEffect } from '@wordpress/element'
-import { InspectorControls } from '@wordpress/block-editor'
-import React from 'react'
+import { InspectorControls, useBlockProps } from '@wordpress/block-editor'
 import { PanelBody } from '@wordpress/components'
 
 export function useSetBlockIdEffect(clientId: string, setAttributes: Function) {
@@ -10,35 +9,18 @@ export function useSetBlockIdEffect(clientId: string, setAttributes: Function) {
     }, [clientId])
 }
 
-import {
-    useBlockProps,
-} from '@wordpress/block-editor'
-
 export const meta = {
-    name: "test/block",
-    title: "TestBlock",
+    name: 'test/block',
+    title: 'TestBlock',
     icon: 'smiley' as const,
     apiVersion: 3,
-    supports: {
-        color: {
-            background: false,
-            gradients: true,
-            text: true,
-        },
-        typography: {
-            fontSize: true,
-            lineHeight: true,
-        },
-        shadow: true,
-    },
-    category: "layout",
+    category: 'layout',
 }
 
 export const edit = ({ clientId, attributes, setAttributes }: any) => {
     const { blockId } = attributes
     useSetBlockIdEffect(clientId, setAttributes)
     const containerRef = useRef<HTMLElement>(null)
-
     const isDev = import.meta.env.DEV
 
     const blockProps = useBlockProps({
@@ -50,35 +32,29 @@ export const edit = ({ clientId, attributes, setAttributes }: any) => {
     return (
         <>
             <InspectorControls>
-                <PanelBody
-                    title={ 'Test Panel' }
-                    initialOpen={ true }
-                >
+                <PanelBody title={ 'Test Panel' } initialOpen={ true }>
                     <div>Test Panel Body</div>
                 </PanelBody>
             </InspectorControls>
-
-            <div { ...blockProps } >Test Block</div>
+            <div { ...blockProps }>Test Block</div>
         </>
     )
 }
 
 export const save = ({ attributes }: any) => {
     const { blockId } = attributes
-
     const blockProps = useBlockProps.save({
         className: `test-block-id-${ blockId }`,
     })
-
-    return (<div { ...blockProps } >Save Block</div>)
+    return (<div { ...blockProps }>Save Block</div>)
 }
 
 registerBlockType(meta.name, {
     ...meta,
     attributes: {
-        blockId: { type: "string", default: 'test' },
-        layout: { type: 'string', default: 'content' },
-        test: { type: 'string', default: 'test' },
+        blockId: { type: 'string', default: 'test' },
+        layout:  { type: 'string', default: 'content' },
+        test:    { type: 'string', default: 'test' },
         __hmrTimestamp: { type: 'number', default: 0 },
     },
     edit,

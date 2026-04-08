@@ -1,10 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { Plugin, ViteDevServer } from 'vite'
+import type { ConfigEnv, Plugin, UserConfig, ViteDevServer } from 'vite'
 import { DEFAULT_DEV_SERVER_HOST, DEFAULT_DEV_SERVER_PORT } from './constants.js'
 
 export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {
     const absoluteHotFile = path.isAbsolute(hotFile) ? hotFile : path.resolve(baseDir, hotFile)
+    let isBuild = false
 
     const cleanup = () => {
         if (fs.existsSync(absoluteHotFile)) {
@@ -14,8 +15,11 @@ export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {
 
     return {
         name: 'vite-plugin-wp:hot-file',
+        config(_config: UserConfig, env: ConfigEnv) {
+            isBuild = env.command === 'build'
+        },
         buildStart() {
-            cleanup()
+            if (isBuild) cleanup()
         },
         configureServer(server: ViteDevServer) {
             const distDir = path.dirname(absoluteHotFile)

@@ -4,3 +4,10 @@ dist
 .DS_Store
 bun.lock
 bun.lockb
+.playwright/
+test-results/
+playwright-report/
+tests/.meta/
+tests/fixtures/host-plugin/static/build
+tests/fixtures/host-plugin/node_modules
+

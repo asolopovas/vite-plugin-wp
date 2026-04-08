@@ -2,6 +2,16 @@ import { test as base, expect, Page, FrameLocator, Locator } from '@playwright/t
 import type { Browser, BrowserContext, BrowserContextOptions } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const PLUGIN_ROOT = path.resolve(__dirname, '..')
+const FIXTURE_ROOT = path.join(PLUGIN_ROOT, 'tests/fixtures/host-plugin')
+
+export const DEFAULT_WP_HOST = 'http://localhost:8888'
+export const DEFAULT_ADMIN_USER = 'admin'
+export const DEFAULT_ADMIN_PASSWORD = 'password'
 
 export type AssetInfo = {
     scriptSrcs: (string | null)[]
@@ -28,33 +38,26 @@ const IGNORED_ERRORS = [
 const EDITOR_CANVAS_SELECTOR = 'iframe[name="editor-canvas"]'
 
 export function resolveWpHost(): string {
-    const host = process.env.WP_HOST
-    if (!host) {
-        throw new Error(
-            'WP_HOST is not set. Point it at a running WordPress install that has the ' +
-            'plugin-under-test active (e.g. WP_HOST=http://example.test or http://localhost:8888).'
-        )
-    }
+    const host = process.env.WP_HOST ?? DEFAULT_WP_HOST
     return host.replace(/\/$/, '')
 }
 
 export function resolveProjectRoot(): string {
-    const root = process.env.WP_PROJECT_ROOT
-    if (!root) {
-        throw new Error(
-            'WP_PROJECT_ROOT is not set. Point it at the plugin/theme directory that ' +
-            'contains src/blocks/Test/index.tsx and src/styles/test.css (the HMR fixtures).'
-        )
-    }
-    return path.resolve(root)
+    return path.resolve(process.env.WP_PROJECT_ROOT ?? FIXTURE_ROOT)
+}
+
+export function resolvePluginRoot(): string {
+    return PLUGIN_ROOT
 }
 
 export function getAuthStatePath(): string {
     const explicit = process.env.WP_TEST_AUTH_PATH
-    if (explicit) return explicit
+    if (explicit) return path.resolve(explicit)
+    return path.join(PLUGIN_ROOT, 'tests/.meta/wp-env-user.json')
+}
 
-    const host = resolveWpHost().replace(/^https?:\/\//, '').replace(/[:\/]/g, '_')
-    return path.join(process.env.HOME || '.', '.config/playwright-cli/auth', `${host}.json`)
+export function getMetaDir(): string {
+    return path.join(PLUGIN_ROOT, 'tests/.meta')
 }
 
 export async function hasEditorCanvasIframe(page: Page): Promise<boolean> {

@@ -43,9 +43,13 @@ Prefer the `Makefile` targets — they wrap the common flows. `make help` prints
 | Type check | `make typecheck` (= `bun run typecheck`) |
 | Release gate | `make check` (test + typecheck + build) |
 | Clean `dist/` | `make clean` |
-| E2E (HMR + smoke) | `bun run test:e2e` |
+| E2E (HMR + smoke, full bootstrap) | `bun run test:e2e` |
 | E2E (prod only) | `bun run test:e2e:prod` |
 | E2E (HMR/@dev only) | `bun run test:e2e:hmr` |
+| Start wp-env manually | `bun run wp-env:start` |
+| Stop wp-env | `bun run wp-env:stop` |
+| Build host-plugin fixture | `bun run fixture:build` |
+| Run host-plugin Vite dev | `bun run fixture:dev` |
 
 ## Releasing
 
@@ -72,35 +76,31 @@ Releases are automated through the `Makefile`. Each release runs `make check`, c
 - npm uses 2FA — if `make publish` fails with E403, the user will supply a fresh token; do not paste your own.
 - If a release fails partway (e.g. tag created but `npm publish` failed), finish the pieces individually (`make publish`, then `make gh-release`). Do NOT delete the tag — `gh release create` against the existing tag is fine.
 
-### Running e2e against a consumer
+### E2E (self-contained wp-env)
 
-The plugin's e2e suite assumes a live WordPress install with a block plugin that uses `@asolopovas/vite-plugin-wp` and registers the Test block (`test/block`). The typical host is `wp-vite-blocks`.
+The plugin's e2e suite is fully self-bootstrapping. After `bun install` (and a Playwright browser install — see below), `bun run test:e2e` does everything:
 
-Required env:
+1. Builds `dist/` if missing.
+2. Boots `wp-env` (idempotent — skipped if already running) using `.wp-env.json` at the repo root, which mounts `tests/fixtures/host-plugin/` as a WordPress plugin.
+3. For `@dev` runs: starts a backgrounded `vite` dev server inside the host-plugin fixture.
+4. For `@prod` runs: builds the host-plugin fixture (only when sources are newer than the manifest).
+5. Captures Playwright auth state via the wp-env default `admin` / `password` credentials and caches it at `tests/.meta/wp-env-user.json`.
+6. Verifies the host-plugin's `check_vite_dev_mode` ajax endpoint reports the expected mode.
 
-| Var | Purpose | Example |
+The host-plugin fixture (`tests/fixtures/host-plugin/`) is a minimal real WordPress plugin: PHP loader (`host-plugin.php`), `block.json`, the Test block source, and `vite.config.ts` that imports `../../../dist/index.js` to consume the plugin under test.
+
+| Var | Purpose | Default |
 |---|---|---|
-| `WP_HOST` | URL of the running WP install | `http://example.test` |
-| `WP_PROJECT_ROOT` | Absolute path to the consumer plugin (has `src/blocks/Test/index.tsx`, `src/styles/test.css`) | `/home/andrius/www/example.test/wp-content/plugins/wp-vite-blocks` |
-| `WP_TEST_AUTH_PATH` | Playwright storage state file | `~/.config/playwright-cli/auth/example.test.json` (auto-detected if omitted) |
-| `VITE_PORT` | Dev server port (default `5173`) | `5173` |
-| `VITE_MODE` | Auto-resolved from `--grep @dev` / `@prod`; override only for debugging | `development` |
-| `WP_TEST_BLOCK_SOURCE` | Override for the block file the HMR test mutates | (defaults to `$WP_PROJECT_ROOT/src/blocks/Test/index.tsx`) |
-| `WP_TEST_BLOCK_CSS` | Override for the CSS file the HMR test mutates | (defaults to `$WP_PROJECT_ROOT/src/styles/test.css`) |
+| `WP_HOST` | wp-env URL | `http://localhost:8888` |
+| `WP_PROJECT_ROOT` | Host-plugin fixture dir | `tests/fixtures/host-plugin` |
+| `WP_TEST_AUTH_PATH` | Playwright storage state | `tests/.meta/wp-env-user.json` |
+| `WP_ENV_USER` / `WP_ENV_PASSWORD` | wp-env admin creds | `admin` / `password` |
+| `VITE_PORT` | Dev server port | `5173` |
+| `WP_TEST_FORCE_BUILD` | Force fixture rebuild even if manifest looks fresh | unset |
+| `WP_TEST_SKIP_BUILD` | Skip fixture build | unset |
+| `WP_ENV_KEEP_RUNNING` | Set to `0` to stop wp-env in teardown (default keeps it running for fast iteration) | unset |
 
-Typical invocation:
-
-```bash
-# In the consumer project:
-bun run dev                  # starts Vite, flips VITE_MODE=development in .env
-
-# In this repo:
-WP_HOST=http://example.test \
-WP_PROJECT_ROOT=/home/andrius/www/example.test/wp-content/plugins/wp-vite-blocks \
-bun run test:e2e:hmr
-```
-
-The e2e harness does **not** start Vite, wp-env, or auth for you. Run `bun run dev` in the consumer and generate an auth state file first (e.g. `make auth` in `wp-vite-blocks`).
+**Browser install**: Playwright browsers are not auto-installed (per the hard constraint). On a fresh clone you must run `bun x playwright install chromium` once yourself before `bun run test:e2e`.
 
 ### Running single tests
 
