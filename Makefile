@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .PHONY: help install build dev test test-unit typecheck check clean \
         release release-patch release-minor release-major \
-        bump tag publish gh-release
+        bump tag publish gh-release deploy
 
 PKG_VERSION := $(shell node -p "require('./package.json').version")
 TAG := v$(PKG_VERSION)
@@ -57,9 +57,9 @@ clean:
 	rm -rf dist
 
 bump:
-	@test -n "$(LEVEL)" || (echo "Usage: make bump LEVEL=patch|minor|major"; exit 1)
+	@test -n "$(LEVEL)" || { echo "Usage: make bump LEVEL=patch|minor|major"; exit 1; }
 	npm version $(LEVEL) --no-git-tag-version
-	@echo "Bumped to $$(node -p \"require('./package.json').version\")"
+	@echo "Bumped to $$(node -p 'require("./package.json").version')"
 
 tag:
 	@git rev-parse "$(TAG)" >/dev/null 2>&1 && { echo "Tag $(TAG) already exists"; exit 1; } || true
@@ -79,23 +79,9 @@ release: check
 	$(MAKE) gh-release
 	@echo "Released $(TAG)"
 
-release-patch:
-	$(MAKE) bump LEVEL=patch
+release-patch release-minor release-major: release-%:
+	$(MAKE) bump LEVEL=$*
 	git add package.json
-	git commit -m "chore: release v$$(node -p \"require('./package.json').version\")"
-	git push origin main
-	$(MAKE) release
-
-release-minor:
-	$(MAKE) bump LEVEL=minor
-	git add package.json
-	git commit -m "chore: release v$$(node -p \"require('./package.json').version\")"
-	git push origin main
-	$(MAKE) release
-
-release-major:
-	$(MAKE) bump LEVEL=major
-	git add package.json
-	git commit -m "chore: release v$$(node -p \"require('./package.json').version\")"
+	git commit -m "chore: release v$$(node -p 'require("./package.json").version')"
 	git push origin main
 	$(MAKE) release
