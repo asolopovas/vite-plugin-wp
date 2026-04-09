@@ -67,18 +67,33 @@ registerBlockType(metadata.name, { edit: Edit, save })
 
 During `vite dev`, a file is written to `static/build/hot` (configurable) containing the dev server URL (e.g. `http://localhost:5173`). Your PHP asset loader reads this file to decide whether to enqueue from the dev server or from the build manifest.
 
-```php
-// Example PHP loader
-$hot = __DIR__ . '/static/build/hot';
-if (file_exists($hot)) {
-    $url = trim(file_get_contents($hot));
-    wp_enqueue_script('my-block', $url . '/src/blocks/index.ts');
-} else {
-    // Read from manifest.json and enqueue built assets
-}
-```
-
 The file is cleaned up automatically when the dev server stops.
+
+```php
+// Dev:  reads static/build/hot → enqueues from http://localhost:5173/src/blocks/index.ts
+// Prod: reads static/build/manifest.json → enqueues hashed files from static/build/
+
+add_action('enqueue_block_editor_assets', function () {
+    $assets = [
+        'src/blocks/index.ts' => [
+            'handle'       => 'my-blocks',
+            'dependencies' => ['wp-element', 'wp-blocks', 'wp-block-editor', 'wp-components'],
+        ],
+    ];
+    (new ViteAssets($assets))->register();
+});
+
+add_action('admin_enqueue_scripts', function (string $hook) {
+    if ($hook !== 'options-media.php') return;
+    $assets = [
+        'src/admin/settings.tsx' => [
+            'handle'       => 'my-settings',
+            'dependencies' => ['wp-element', 'wp-components', 'wp-api-fetch'],
+        ],
+    ];
+    (new ViteAssets($assets))->register();
+});
+```
 
 ### VITE_MODE env sync
 
