@@ -100,16 +100,16 @@ The plugin registers these path aliases automatically:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `input` | `string \| string[]` | - | Forwarded to `build.rollupOptions.input` |
-| `outDir` | `string` | `static/build` | Vite output directory |
-| `manifest` | `string \| boolean` | `manifest.json` | Manifest filename, or `false` to disable |
-| `assetsInlineLimit` | `number` | `0` | Keeps assets as files so PHP loaders can resolve them |
-| `base` | `string` | - | Public base path (forwarded to Vite `base`) |
-| `debugHmr` | `boolean` | `false` | Log block HMR events to console |
-| `hmrDebounceMs` | `number` | `100` | Debounce window (ms) for block re-registration |
-| `envFile` | `string` | `.env` | Path for the `VITE_MODE` sync |
-| `syncViteMode` | `boolean` | `true` | Toggle the `VITE_MODE` sync sub-plugin |
-| `hotFile` | `string` | `static/build/hot` | Dev-server hot file path |
+| `input` | `string \| string[]` | - | Entry points for Rollup (CSS, block index files, etc.) |
+| `outDir` | `string` | `static/build` | Directory where built assets and manifest are written |
+| `manifest` | `string \| boolean` | `manifest.json` | Name of the manifest file PHP reads to resolve asset URLs, or `false` to skip |
+| `assetsInlineLimit` | `number` | `0` | Max size (bytes) to inline assets as data URIs. `0` keeps all assets as separate files for PHP resolution |
+| `base` | `string` | - | URL prefix for asset paths (e.g. `/wp-content/plugins/my-plugin/assets/dist/`) |
+| `debugHmr` | `boolean` | `false` | Print block HMR register/unregister events to the browser console |
+| `hmrDebounceMs` | `number` | `100` | Wait time (ms) before re-registering a block after an HMR update, prevents rapid consecutive re-renders |
+| `envFile` | `string` | `.env` | Path to the env file where `VITE_MODE` is written during dev |
+| `syncViteMode` | `boolean` | `true` | Write `VITE_MODE=development` to `envFile` on dev start and restore to `production` on exit |
+| `hotFile` | `string` | `static/build/hot` | File written during dev containing the dev server URL, read by PHP to decide between dev and built assets |
 
 ## Full example
 
