@@ -14,6 +14,8 @@ Vite plugin for WordPress block and theme development. Replaces `@wordpress/*` i
 
 ```bash
 npm i -D @asolopovas/vite-plugin-wp
+# or
+bun add -D @asolopovas/vite-plugin-wp
 ```
 
 ## Quick start
