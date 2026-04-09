@@ -149,10 +149,11 @@ import save from './my-block/save'
 registerBlockType(metadata.name, { edit: Edit, save })
 ```
 
-## License
-
-MIT
 
 ## Status
 
 > **Experimental - AI-assisted.** Works for the author's wp-vite-blocks setup but isn't battle-tested. Expect breaking changes; pin the version and file issues with reproductions.
+
+## License
+
+MIT
