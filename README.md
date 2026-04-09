@@ -40,18 +40,18 @@ export default defineConfig({
 |---|---|---|
 | `@wordpress/blocks` | `wp.blocks` | dev + build |
 | `@wordpress/block-editor` | `wp.blockEditor` | dev + build |
-| `@wordpress/icons` | kept as-is (bundled) | — |
+| `@wordpress/icons` | kept as-is (bundled) | - |
 | `react` / `react-dom` | `wp.element` | dev + build (via shim) |
 | `lodash-es` / `lodash` | WP lodash global | dev + build (via shim) |
 
-During **dev**, imports are rewritten at the transform stage. During **build**, `@wordpress/*` imports are rewritten in `renderChunk` so the output references `wp.*` globals directly — no bundling of WP packages.
+During **dev**, imports are rewritten at the transform stage. During **build**, `@wordpress/*` imports are rewritten in `renderChunk` so the output references `wp.*` globals directly - no bundling of WP packages.
 
 ### Block HMR
 
 Files whose path contains `blocks/index`, `editor`, or `vite-blocks` are treated as block entry points. When such a file calls `registerBlockType`, the plugin wraps it so edits re-register only the changed block without a full page reload.
 
 ```ts
-// src/blocks/index.ts — auto-detected as block entry
+// src/blocks/index.ts - auto-detected as block entry
 import { registerBlockType } from '@wordpress/blocks'
 import metadata from './block.json'
 import Edit from './edit'
@@ -98,11 +98,11 @@ The plugin registers these path aliases automatically:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `input` | `string \| string[]` | — | Forwarded to `build.rollupOptions.input` |
+| `input` | `string \| string[]` | - | Forwarded to `build.rollupOptions.input` |
 | `outDir` | `string` | `static/build` | Vite output directory |
 | `manifest` | `string \| boolean` | `manifest.json` | Manifest filename, or `false` to disable |
 | `assetsInlineLimit` | `number` | `0` | Keeps assets as files so PHP loaders can resolve them |
-| `base` | `string` | — | Public base path (forwarded to Vite `base`) |
+| `base` | `string` | - | Public base path (forwarded to Vite `base`) |
 | `debugHmr` | `boolean` | `false` | Log block HMR events to console |
 | `hmrDebounceMs` | `number` | `100` | Debounce window (ms) for block re-registration |
 | `envFile` | `string` | `.env` | Path for the `VITE_MODE` sync |
@@ -138,7 +138,7 @@ export default defineConfig({
 import { registerBlockType } from '@wordpress/blocks'
 import { useBlockProps } from '@wordpress/block-editor'
 import { useState } from 'react'
-// All three imports above resolve to WP globals — nothing is bundled.
+// All three imports above resolve to WP globals - nothing is bundled.
 
 import metadata from './my-block/block.json'
 import Edit from './my-block/edit'
