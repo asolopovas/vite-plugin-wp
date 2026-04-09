@@ -103,7 +103,7 @@ The plugin registers these path aliases automatically:
 | `input` | `string \| string[]` | - | Entry points for Rollup (CSS, block index files, etc.) |
 | `outDir` | `string` | `static/build` | Directory where built assets and manifest are written |
 | `manifest` | `string \| boolean` | `manifest.json` | Name of the manifest file PHP reads to resolve asset URLs, or `false` to skip |
-| `assetsInlineLimit` | `number` | `0` | Max size (bytes) to inline assets as data URIs. `0` keeps all assets as separate files for PHP resolution |
+| `assetsInlineLimit` | `number` | `0` | Vite normally inlines small assets (images, fonts) as base64 strings into your JS/CSS. That breaks WordPress because PHP needs to enqueue each asset by URL from the manifest. `0` disables inlining so every asset gets its own file and manifest entry |
 | `base` | `string` | - | URL prefix for asset paths (e.g. `/wp-content/plugins/my-plugin/assets/dist/`) |
 | `debugHmr` | `boolean` | `false` | Print block HMR register/unregister events to the browser console |
 | `hmrDebounceMs` | `number` | `100` | Wait time (ms) before re-registering a block after an HMR update, prevents rapid consecutive re-renders |
