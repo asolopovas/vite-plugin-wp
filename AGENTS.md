@@ -19,6 +19,10 @@ Follow unless the user gives explicit overrides.
 - **Playwright Test** for e2e against a real WordPress install that loads a block plugin exercising this Vite plugin.
 - Unit tests via `bun test` under `tests/`.
 
+## Architecture
+
+`wpPlugin(options)` returns 4 sub-plugins: **corePlugin** (string-level import rewriting + block HMR injection + virtual module), **hotFilePlugin** (writes dev server URL for PHP), **hmrFilterPlugin** (prevents CSS→JS HMR cascades), **envModePlugin** (syncs `VITE_MODE` to `.env`). Transforms in `src/transforms/` are regex-based, not AST. tsup produces two builds: the plugin (Node) and `dist/runtime/block-hmr.js` (browser, ES2020, zero WP type deps).
+
 ## Layout
 
 - `src/index.ts` — main plugin composer; returns the plugin array from `wpPlugin(options)`.
