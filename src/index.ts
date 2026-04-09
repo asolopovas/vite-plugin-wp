@@ -56,6 +56,8 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
             }
         },
         async transform(code: string, id: string) {
+            if (isBuild) return
+
             const cleanId = id.split('?')[0]
             if (!JS_LIKE_EXTENSION.test(cleanId)) return
 
@@ -69,10 +71,8 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs)
             }
 
-            if (!isBuild) {
-                result = transformWordpressImports(result)
-                result = transformReactImports(result)
-            }
+            result = transformWordpressImports(result)
+            result = transformReactImports(result)
             result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
             result = injectIndexDepsAccept(result, cleanId, hmrLogger, isBuild)
 
