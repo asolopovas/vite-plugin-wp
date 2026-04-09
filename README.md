@@ -69,31 +69,183 @@ During `vite dev`, a file is written to `static/build/hot` (configurable) contai
 
 The file is cleaned up automatically when the dev server stops.
 
+<details>
+<summary>Example ViteAssets PHP loader</summary>
+
 ```php
-// Dev:  reads static/build/hot → enqueues from http://localhost:5173/src/blocks/index.ts
-// Prod: reads static/build/manifest.json → enqueues hashed files from static/build/
+<?php
+
+class ViteAssets
+{
+    public string $manifestDir;
+    public string $manifestPath;
+    public bool $isDev = false;
+    public array $assets = [];
+    public string $baseUrl;
+    public array $assetQueue = [];
+    public array $manifest = [];
+
+    public function __construct(array $assets, string $manifestDir = __DIR__ . '/../static/build')
+    {
+        $this->assets       = $assets;
+        $this->manifestDir  = $manifestDir;
+        $this->isDev        = $this->checkDevMode();
+        $this->manifestPath = "{$this->manifestDir}/manifest.json";
+
+        if (!$this->isDev) {
+            $this->parseManifest();
+        }
+
+        $this->baseUrl = $this->isDev
+            ? 'http://localhost:' . (getenv('VITE_PORT') ?: '5173')
+            : $this->resolveBaseUrl();
+
+        $this->prepareAssetQueue();
+    }
+
+    public function register(): void
+    {
+        add_filter('script_loader_tag', [$this, 'filterScriptLoaderTag'], 10, 2);
+
+        foreach ($this->assetQueue as $asset) {
+            if (in_array($asset['type'], ['js', 'ts', 'jsx', 'tsx'])) {
+                wp_enqueue_script(
+                    $asset['handle'], $asset['src'], $asset['dependencies'],
+                    $this->isDev ? (string) time() : null, $asset['in_footer']
+                );
+            } elseif ($asset['type'] === 'css') {
+                wp_enqueue_style(
+                    $asset['handle'], $asset['src'], $asset['dependencies'],
+                    $this->isDev ? (string) time() : null
+                );
+            }
+        }
+    }
+
+    public function filterScriptLoaderTag(string $tag, string $handle): string
+    {
+        foreach ($this->assetQueue as $asset) {
+            if ($handle === $asset['handle'] && in_array($asset['type'], ['js', 'ts', 'jsx', 'tsx'])) {
+                if (!str_contains($tag, 'type="module"') && !str_contains($tag, "type='module'")) {
+                    return str_replace('<script ', '<script type="module" ', $tag);
+                }
+            }
+        }
+        return $tag;
+    }
+
+    private function prepareAssetQueue(): void
+    {
+        if ($this->isDev) {
+            $hasScript = false;
+            foreach ($this->assets as $key => $value) {
+                [$name, $options] = is_int($key) ? [$value, []] : [$key, $value];
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (in_array($ext, ['js', 'ts', 'jsx', 'tsx'])) $hasScript = true;
+                $this->addAsset($name, "{$this->baseUrl}/{$name}", $options);
+            }
+            if ($hasScript) {
+                $this->assetQueue['vite-client'] = [
+                    'type' => 'js', 'handle' => 'vite-client',
+                    'src' => "{$this->baseUrl}/@vite/client",
+                    'dependencies' => [], 'in_footer' => false,
+                ];
+            }
+        } else {
+            foreach ($this->assets as $key => $value) {
+                [$name, $options] = is_int($key) ? [$value, []] : [$key, $value];
+                if (isset($this->manifest[$name])) {
+                    $this->processImportTree($name);
+                    $src = "{$this->baseUrl}/{$this->manifest[$name]['file']}";
+                } else {
+                    $src = "{$this->baseUrl}/{$name}";
+                }
+                $this->addAsset($name, $src, $options);
+            }
+        }
+    }
+
+    private function processImportTree(string $name, array &$seen = []): void
+    {
+        if (isset($seen[$name]) || !isset($this->manifest[$name])) return;
+        $seen[$name] = true;
+        $entry = $this->manifest[$name];
+
+        foreach ($entry['imports'] ?? [] as $import) {
+            $this->processImportTree($import, $seen);
+            if (isset($this->manifest[$import]['file'])) {
+                $this->addAsset($import, "{$this->baseUrl}/{$this->manifest[$import]['file']}");
+            }
+        }
+        foreach ($entry['css'] ?? [] as $css) {
+            $this->addAsset($css, "{$this->baseUrl}/{$css}");
+        }
+    }
+
+    private function addAsset(string $name, string $src, array $options = []): void
+    {
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $this->assetQueue[$name] = [
+            'type'         => str_contains($ext, 'css') ? 'css' : $ext,
+            'handle'       => $options['handle'] ?? pathinfo($name, PATHINFO_FILENAME),
+            'src'          => $src,
+            'dependencies' => $options['dependencies'] ?? [],
+            'in_footer'    => $options['in_footer'] ?? true,
+        ];
+    }
+
+    private function parseManifest(): void
+    {
+        if (!file_exists($this->manifestPath)) return;
+        $this->manifest = json_decode(file_get_contents($this->manifestPath), true) ?: [];
+    }
+
+    private function checkDevMode(): bool
+    {
+        $mode = getenv('VITE_MODE') ?: ($_ENV['VITE_MODE'] ?? 'production');
+        return strtolower(trim($mode)) === 'development';
+    }
+
+    private function resolveBaseUrl(): string
+    {
+        $dir = realpath($this->manifestDir) ?: $this->manifestDir;
+        if (function_exists('get_site_url')) {
+            return untrailingslashit(
+                str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', get_site_url(), $dir)
+            );
+        }
+        return $dir;
+    }
+}
+```
+
+**Usage:**
+
+```php
+// Dev:  enqueues from http://localhost:5173/src/blocks/index.ts + injects @vite/client
+// Prod: resolves hashed filenames from static/build/manifest.json
 
 add_action('enqueue_block_editor_assets', function () {
-    $assets = [
+    (new ViteAssets([
         'src/blocks/index.ts' => [
             'handle'       => 'my-blocks',
-            'dependencies' => ['wp-element', 'wp-blocks', 'wp-block-editor', 'wp-components'],
+            'dependencies' => ['wp-element', 'wp-blocks', 'wp-block-editor'],
         ],
-    ];
-    (new ViteAssets($assets))->register();
+    ]))->register();
 });
 
 add_action('admin_enqueue_scripts', function (string $hook) {
     if ($hook !== 'options-media.php') return;
-    $assets = [
+    (new ViteAssets([
         'src/admin/settings.tsx' => [
             'handle'       => 'my-settings',
             'dependencies' => ['wp-element', 'wp-components', 'wp-api-fetch'],
         ],
-    ];
-    (new ViteAssets($assets))->register();
+    ]))->register();
 });
 ```
+
+</details>
 
 ### VITE_MODE env sync
 
