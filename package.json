@@ -1,6 +1,6 @@
 {
     "name": "@asolopovas/vite-plugin-wp",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Vite plugin for WordPress block and theme development with HMR, WP global shimming, and dev-mode env sync.",
     "type": "module",
     "main": "./dist/index.js",
