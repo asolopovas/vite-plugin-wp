@@ -1,73 +1,70 @@
 import { WORDPRESS_BUNDLED_PACKAGES } from '../constants.js'
-import { fixMemberAliases, kebabToCamel, wordpressPackageToGlobal } from '../utils/strings.js'
+import { fixMemberAliases, wordpressPackageToGlobal } from '../utils/strings.js'
 
-type ImportReplacementTransform = { pattern: RegExp; replacement: string }
-type ImportReplacerTransform = {
-    pattern: RegExp
-    replacer: (substring: string, ...args: string[]) => string
+const globalNameCache = new Map<string, string>()
+const globalFor = (pkg: string): string => {
+    let g = globalNameCache.get(pkg)
+    if (g === undefined) {
+        g = wordpressPackageToGlobal(pkg)
+        globalNameCache.set(pkg, g)
+    }
+    return g
 }
-type ImportTransform = ImportReplacementTransform | ImportReplacerTransform
 
-const WORDPRESS_IMPORT_TRANSFORMS: ImportTransform[] = [
-    {
-        pattern: /import\s+{([^}]+)}\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g,
-        replacer: (match: string, members: string, pkg: string) => {
-            if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
-            const wpProp = kebabToCamel(pkg)
-            const fixedMembers = fixMemberAliases(members)
-            return `const {${fixedMembers}} = wp.${wpProp};`
-        },
-    },
-    {
-        pattern: /import\s+(\w+)\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g,
-        replacer: (match: string, name: string, pkg: string) => {
-            if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
-            const wpProp = kebabToCamel(pkg)
-            return `const ${name} = wp.${wpProp};`
-        },
-    },
-    {
-        pattern: /import\s+\*\s+as\s+(\w+)\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g,
-        replacer: (match: string, name: string, pkg: string) => {
-            if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
-            const wpProp = kebabToCamel(pkg)
-            return `const ${name} = wp.${wpProp};`
-        },
-    },
-]
+const WP_NAMED_RE = /import\s+{([^}]+)}\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g
+const WP_DEFAULT_RE = /import\s+(\w+)\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g
+const WP_NAMESPACE_RE = /import\s+\*\s+as\s+(\w+)\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g
 
 export function transformWordpressImports(code: string): string {
-    return WORDPRESS_IMPORT_TRANSFORMS.reduce((result, t) => {
-        if ('replacement' in t) return result.replace(t.pattern, t.replacement)
-        return result.replace(t.pattern, t.replacer)
-    }, code)
+    if (!code.includes('@wordpress/')) return code
+    let result = code
+    result = result.replace(WP_NAMED_RE, (match, members: string, pkg: string) => {
+        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
+        return `const {${fixMemberAliases(members)}} = ${globalFor(pkg)};`
+    })
+    result = result.replace(WP_DEFAULT_RE, (match, name: string, pkg: string) => {
+        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
+        return `const ${name} = ${globalFor(pkg)};`
+    })
+    result = result.replace(WP_NAMESPACE_RE, (match, name: string, pkg: string) => {
+        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
+        return `const ${name} = ${globalFor(pkg)};`
+    })
+    return result
+}
+
+const WP_SINGLE_CLAUSE_RE = /import\s+(\*\s+as\s+\w+|\w+|\{[^}]*\})\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g
+const WP_DUAL_CLAUSE_RE = /import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+['"]@wordpress\/([\w-]+)['"];?/g
+const NAMESPACE_STRIP_RE = /^\*\s+as\s+/
+
+function declFor(clause: string, global: string): string {
+    if (clause.startsWith('*')) {
+        const name = clause.replace(NAMESPACE_STRIP_RE, '').trim()
+        return `const ${name}=${global};`
+    }
+    if (clause.startsWith('{')) {
+        const inner = clause.slice(1, -1).trim()
+        return inner ? `const{${fixMemberAliases(inner)}}=${global};` : ''
+    }
+    return `const ${clause.trim()}=${global};`
 }
 
 export function rewriteWordpressImportsToGlobals(code: string): string | null {
     if (!code.includes('@wordpress/')) return null
 
-    const importPattern = /import\s*(?:(\*\s+as\s+\w+|\w+|\{[^}]*\})(?:\s*,\s*(\*\s+as\s+\w+|\w+|\{[^}]*\}))?)\s*from\s*['"]@wordpress\/([\w-]+)['"];?/g
-
     let didRewrite = false
-    const out = code.replace(importPattern, (_match: string, first: string, second: string | undefined, pkg: string) => {
-        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return _match
+
+    let out = code.replace(WP_DUAL_CLAUSE_RE, (match, def: string, named: string, pkg: string) => {
+        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
         didRewrite = true
-        const global = wordpressPackageToGlobal(pkg)
-        const decls: string[] = []
-        const handle = (clause: string) => {
-            if (clause.startsWith('*')) {
-                const name = clause.replace(/^\*\s+as\s+/, '').trim()
-                decls.push(`const ${name}=${global};`)
-            } else if (clause.startsWith('{')) {
-                const inner = clause.slice(1, -1).trim()
-                if (inner) decls.push(`const{${fixMemberAliases(inner)}}=${global};`)
-            } else {
-                decls.push(`const ${clause.trim()}=${global};`)
-            }
-        }
-        handle(first)
-        if (second) handle(second)
-        return decls.join('')
+        const global = globalFor(pkg)
+        return `const ${def.trim()}=${global};const{${fixMemberAliases(named)}}=${global};`
+    })
+
+    out = out.replace(WP_SINGLE_CLAUSE_RE, (match, clause: string, pkg: string) => {
+        if (WORDPRESS_BUNDLED_PACKAGES.has(pkg)) return match
+        didRewrite = true
+        return declFor(clause, globalFor(pkg))
     })
 
     return didRewrite ? out : null

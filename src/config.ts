@@ -77,7 +77,7 @@ export function configureBuild(config: UserConfig, options: ResolvedWpPluginOpti
                 chunkFileNames: '[name]-[hash].js',
                 assetFileNames: '[name]-[hash].[ext]',
                 format: 'es',
-                ...(config.build?.rollupOptions?.output || {}),
+                ...config.build?.rollupOptions?.output,
             },
             external: [...ROLLUP_EXTERNAL_DEFAULT, ...externalArray],
         },

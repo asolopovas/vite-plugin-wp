@@ -82,8 +82,8 @@ export const JS_LIKE_EXTENSION = /\.(jsx|tsx?|js)$/
 
 export const HMR_LOGGER_PLACEHOLDER = '__WPV_HMR_LOGGER__'
 export const HMR_DEBOUNCE_PLACEHOLDER = '__WPV_HMR_DEBOUNCE_MS__'
-export const HMR_EXPORT_LINE_PLACEHOLDER = '__WPV_HMR_EXPORT_LINE__'
-export const HMR_DEP_ACCEPT_PLACEHOLDER = '__WPV_HMR_DEP_ACCEPT__'
+export const HMR_EXPORT_LINE_PLACEHOLDER = '/*__WPV_HMR_EXPORT_LINE__*/'
+export const HMR_DEP_ACCEPT_PLACEHOLDER = '/*__WPV_HMR_DEP_ACCEPT__*/'
 
 export function isBlockIndexEntry(id: string): boolean {
     return BLOCK_INDEX_MARKERS.some((marker) => id.includes(marker))

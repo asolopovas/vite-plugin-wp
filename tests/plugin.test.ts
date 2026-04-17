@@ -86,9 +86,9 @@ describe('vitePluginWp', () => {
 
             const core = getCorePlugin(plugins)
             expect(typeof core.config).toBe('function')
-            expect(typeof core.transform).toBe('function')
-            expect(typeof core.resolveId).toBe('function')
-            expect(typeof core.load).toBe('function')
+            expect(typeof (core.transform as { handler: unknown }).handler).toBe('function')
+            expect(typeof (core.resolveId as { handler: unknown }).handler).toBe('function')
+            expect(typeof (core.load as { handler: unknown }).handler).toBe('function')
         })
 
         it('can disable the env-mode plugin', () => {

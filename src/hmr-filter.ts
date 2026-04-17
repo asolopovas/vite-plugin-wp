@@ -10,14 +10,15 @@ export function hmrFilterPlugin(baseDir: string): Plugin {
     const cssContentHashes = new Map<string, string>()
     const cssOutputHashes = new Map<string, string>()
     const editorCssPath = path.resolve(baseDir, EDITOR_CSS_REL)
+    const BACKSLASH_RE = /\\/g
+    const normalizedEditorCss = editorCssPath.replace(BACKSLASH_RE, '/')
 
     function filterOutEditorCssModules<T extends { id: string | null; file: string | null; type?: string }>(
         modules: T[],
     ): T[] {
-        const normalizedEditorCss = editorCssPath.replace(/\\/g, '/')
         return modules.filter((mod) => {
-            const modFile = (mod.file || mod.id || '').replace(/\\/g, '/')
-            const modUrl = ((mod as { url?: string }).url || '').replace(/\\/g, '/')
+            const modFile = (mod.file || mod.id || '').replace(BACKSLASH_RE, '/')
+            const modUrl = ((mod as { url?: string }).url || '').replace(BACKSLASH_RE, '/')
             const isCss = modFile.endsWith('.css') || modUrl.endsWith('.css') || mod.type === 'css'
             if (!isCss) return true
             const matchesEditorCss = [modFile, modUrl].some((value) =>

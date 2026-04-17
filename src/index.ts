@@ -32,18 +32,27 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
 
     const VIRTUAL_BLOCK_HMR = 'virtual:vite-plugin-wp/block-hmr'
     const RESOLVED_BLOCK_HMR = '\0' + VIRTUAL_BLOCK_HMR
+    const VIRTUAL_BLOCK_HMR_RE = /^virtual:vite-plugin-wp\/block-hmr$/
+    // oxlint-disable-next-line no-control-regex -- resolved virtual ids are intentionally NUL-prefixed (Rollup convention)
+    const RESOLVED_BLOCK_HMR_RE = /^\u0000virtual:vite-plugin-wp\/block-hmr$/
     const blockHmrFile = path.join(PACKAGE_ROOT, 'dist/runtime/block-hmr.js')
 
     const corePlugin: Plugin = {
         name: 'vite-plugin-wp',
-        resolveId(id: string) {
-            if (id === VIRTUAL_BLOCK_HMR) return RESOLVED_BLOCK_HMR
+        resolveId: {
+            filter: { id: VIRTUAL_BLOCK_HMR_RE },
+            handler(id: string) {
+                if (id === VIRTUAL_BLOCK_HMR) return RESOLVED_BLOCK_HMR
+            },
         },
-        async load(id: string) {
-            if (id === RESOLVED_BLOCK_HMR) {
-                const fs = await import('fs/promises')
-                return fs.readFile(blockHmrFile, 'utf-8')
-            }
+        load: {
+            filter: { id: RESOLVED_BLOCK_HMR_RE },
+            async handler(id: string) {
+                if (id === RESOLVED_BLOCK_HMR) {
+                    const fs = await import('fs/promises')
+                    return fs.readFile(blockHmrFile, 'utf-8')
+                }
+            },
         },
         config(config: UserConfig, env: ConfigEnv) {
             isBuild = env.command === 'build'
@@ -55,32 +64,36 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 configureBuild(config, resolved)
             }
         },
-        async transform(code: string, id: string) {
-            if (isBuild) return
+        transform: {
+            filter: { id: JS_LIKE_EXTENSION },
+            async handler(code: string, id: string) {
+                if (isBuild) return
 
-            const cleanId = id.split('?')[0]
-            if (!JS_LIKE_EXTENSION.test(cleanId)) return
+                const cleanId = id.split('?')[0]
+                if (!JS_LIKE_EXTENSION.test(cleanId)) return
 
-            const cacheKey = `${id}:${generateContentHash(code)}`
-            const cached = transformCache.get(cacheKey)
-            if (cached) return { code: cached, map: null }
+                const cacheKey = `${id}:${generateContentHash(code)}`
+                const cached = transformCache.get(cacheKey)
+                if (cached) return { code: cached, map: null }
 
-            let result = code
+                let result = code
 
-            if (isBlockIndexEntry(cleanId)) {
-                result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs)
-            }
+                if (isBlockIndexEntry(cleanId)) {
+                    result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs)
+                }
 
-            result = transformWordpressImports(result)
-            result = transformReactImports(result)
-            result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
-            result = injectIndexDepsAccept(result, cleanId, hmrLogger, isBuild)
+                result = transformWordpressImports(result)
+                result = transformReactImports(result)
+                result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
+                result = injectIndexDepsAccept(result, cleanId, hmrLogger, isBuild)
 
-            transformCache.set(cacheKey, result)
-            return { code: result, map: null }
+                transformCache.set(cacheKey, result)
+                return { code: result, map: null }
+            },
         },
         renderChunk(code: string) {
             if (!isBuild) return null
+            if (!code.includes('@wordpress/')) return null
             const rewritten = rewriteWordpressImportsToGlobals(code)
             return rewritten ? { code: rewritten, map: null } : null
         },

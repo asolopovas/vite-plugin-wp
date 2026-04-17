@@ -23,6 +23,13 @@ Follow unless the user gives explicit overrides.
 
 `wpPlugin(options)` returns 4 sub-plugins: **corePlugin** (string-level import rewriting + block HMR injection + virtual module), **hotFilePlugin** (writes dev server URL for PHP), **hmrFilterPlugin** (prevents CSS→JS HMR cascades), **envModePlugin** (syncs `VITE_MODE` to `.env`). Transforms in `src/transforms/` are regex-based, not AST. tsup produces two builds: the plugin (Node) and `dist/runtime/block-hmr.js` (browser, ES2020, zero WP type deps).
 
+**Performance invariants** (violate these and the `[PLUGIN_TIMINGS]` warning comes back):
+
+- `corePlugin.transform` returns early when `isBuild` is true (`src/index.ts`). At build time, **no per-module transform from this plugin runs** — the only hot paths are `renderChunk` (once per output chunk) and the `config` hook (once). Future "why is this plugin slow at build time?" investigations should start in `renderChunk`, not in `src/transforms/`.
+- `rewriteWordpressImportsToGlobals` (`src/transforms/wp-imports.ts`) runs on full concatenated chunks (100s of KB). Keep its regexes linear — **no nested alternations with `[^}]*` inner branches** (classic catastrophic-backtracking shape). The current split into two separate patterns (dual-clause, then single-clause) is intentional; don't collapse them back into one.
+- Always guard hot-path regex passes with a cheap `code.includes('<marker>')` substring check first (`@wordpress/`, `react`, `registerBlockType`). Regex `.test()`/`.replace()` on a 300 KB chunk is not free even when it matches nothing.
+- Keep every RegExp literal at module scope. `new RegExp(...)` inside a per-module / per-chunk function recompiles the pattern on every call.
+
 ## Layout
 
 - `src/index.ts` — main plugin composer; returns the plugin array from `wpPlugin(options)`.
@@ -45,7 +52,8 @@ Prefer the `Makefile` targets — they wrap the common flows. `make help` prints
 | Build (watch) | `make dev` (= `bun run dev`) |
 | Unit tests | `make test` (= `bun run test`) |
 | Type check | `make typecheck` (= `bun run typecheck`) |
-| Release gate | `make check` (test + typecheck + build) |
+| Lint | `make lint` (oxlint `src tests` + tsc --noEmit) |
+| Release gate | `make check` (lint + test-unit + build) |
 | Clean `dist/` | `make clean` |
 | E2E (HMR + smoke, full bootstrap) | `bun run test:e2e` |
 | E2E (prod only) | `bun run test:e2e:prod` |

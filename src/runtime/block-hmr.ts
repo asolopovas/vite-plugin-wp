@@ -80,7 +80,7 @@ function reRegisterBlock(
     nextSave: unknown,
 ): boolean {
     const nextAttributes = {
-        ...(current.attributes || {}),
+        ...current.attributes,
         [HMR_TIMESTAMP_ATTR]: { type: 'number', default: 0 },
     }
 

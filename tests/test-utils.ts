@@ -148,6 +148,7 @@ export async function bootEditor(page: Page, wpHost: string, postId?: number): P
 }
 
 export const test = base.extend<TestFixtures>({
+    // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructure pattern; empty = no fixture deps
     wpHost: async ({}, use) => {
         await use(resolveWpHost())
     },

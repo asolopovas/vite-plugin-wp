@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help install build dev test test-unit typecheck check clean \
+.PHONY: help install build dev test test-unit typecheck lint check clean \
         release release-patch release-minor release-major \
         bump tag publish gh-release deploy
 
@@ -15,7 +15,8 @@ help:
 	@echo "  test              unit + e2e (everything)"
 	@echo "  test-unit         unit only"
 	@echo "  typecheck         tsc --noEmit"
-	@echo "  check             test + typecheck + build (release gate)"
+	@echo "  lint              oxlint + tsc (stops at first failure)"
+	@echo "  check             lint + test-unit + build (release gate)"
 	@echo "  clean             remove dist/"
 	@echo ""
 	@echo "Release (runs check, git tag, npm publish, gh release):"
@@ -51,7 +52,14 @@ test-unit:
 typecheck:
 	bun run typecheck
 
-check: test-unit typecheck build
+lint:
+	@printf '── oxlint ───────────────────────────────────────\n'
+	@bun x oxlint src tests
+	@printf '\n── tsc ─────────────────────────────────────────\n'
+	@bun x tsc --noEmit
+	@printf 'OK\n'
+
+check: lint test-unit build
 
 clean:
 	rm -rf dist

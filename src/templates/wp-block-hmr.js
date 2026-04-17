@@ -254,7 +254,7 @@ async function expandCssUpdatePaths(doc, updatePaths, origin) {
     const links = getStylesheetLinks(doc)
     if (links.length === 0) return {effectivePaths: updatePaths, importPaths: []}
 
-    const importRegex = /@import\s+(?:url\()?['"]?([^'"\)\s]+)['"]?\)?/g
+    const importRegex = /@import\s+(?:url\()?['"]?([^'")\s]+)['"]?\)?/g
     const resolvedOrigin = getResolvedOrigin(origin)
 
     const entries = await Promise.all(links.map(async (link) => {
@@ -597,7 +597,7 @@ function refreshStyleImports(doc, updatePaths, origin, timestampStr) {
     if (styles.length === 0) return 0
 
     let refreshed = 0
-    const importRegex = /(@import\s+(?:url\()?['"]?)([^'"\)]+)(['"]?\)?)/g
+    const importRegex = /(@import\s+(?:url\()?['"]?)([^'")]+)(['"]?\)?)/g
 
     for (const style of styles) {
         const text = style.textContent || ''

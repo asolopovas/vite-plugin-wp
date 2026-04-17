@@ -55,6 +55,7 @@ const REACT_IMPORT_TRANSFORMS: ImportTransform[] = [
 ]
 
 export function transformReactImports(code: string): string {
+    if (!code.includes('react')) return code
     return REACT_IMPORT_TRANSFORMS.reduce((result, t) => {
         if ('replacement' in t) return result.replace(t.pattern, t.replacement)
         return result.replace(t.pattern, t.replacer)

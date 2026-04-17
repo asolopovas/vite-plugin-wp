@@ -9,12 +9,31 @@ import { createTemplateLoader } from '../utils/templates.js'
 
 const loadInjectionTemplate = createTemplateLoader(TEMPLATE_PATHS.blockHmrInjection)
 
-function hasEditOrSaveSymbol(code: string, name: string): boolean {
-    return (
-        new RegExp(`\\bexport\\s+const\\s+${name}\\b|\\bconst\\s+${name}\\b`).test(code) ||
-        new RegExp(`\\bimport\\s+${name}\\s+from\\b`).test(code) ||
-        new RegExp(`\\bimport\\s*{[^}]*\\b${name}\\b[^}]*}\\s+from\\b`).test(code)
-    )
+const EDIT_SYMBOL_DECL_RE = /\bexport\s+const\s+edit\b|\bconst\s+edit\b/
+const EDIT_SYMBOL_DEFAULT_IMPORT_RE = /\bimport\s+edit\s+from\b/
+const EDIT_SYMBOL_NAMED_IMPORT_RE = /\bimport\s*{[^}]*\bedit\b[^}]*}\s+from\b/
+const SAVE_SYMBOL_DECL_RE = /\bexport\s+const\s+save\b|\bconst\s+save\b/
+const SAVE_SYMBOL_DEFAULT_IMPORT_RE = /\bimport\s+save\s+from\b/
+const SAVE_SYMBOL_NAMED_IMPORT_RE = /\bimport\s*{[^}]*\bsave\b[^}]*}\s+from\b/
+
+const EDIT_DEFAULT_SOURCE_RE = /import\s+edit\s+from\s+['"]([^'"]+)['"]/
+const EDIT_NAMED_SOURCE_RE = /import\s*{[^}]*\bedit\b[^}]*}\s+from\s+['"]([^'"]+)['"]/
+const SAVE_DEFAULT_SOURCE_RE = /import\s+save\s+from\s+['"]([^'"]+)['"]/
+const SAVE_NAMED_SOURCE_RE = /import\s*{[^}]*\bsave\b[^}]*}\s+from\s+['"]([^'"]+)['"]/
+
+const META_DECL_RE = /\bexport\s+const\s+meta\b|\bconst\s+meta\b/
+const BACKSLASH_RE = /\\/g
+
+function hasEditSymbol(code: string): boolean {
+    return EDIT_SYMBOL_DECL_RE.test(code)
+        || EDIT_SYMBOL_DEFAULT_IMPORT_RE.test(code)
+        || EDIT_SYMBOL_NAMED_IMPORT_RE.test(code)
+}
+
+function hasSaveSymbol(code: string): boolean {
+    return SAVE_SYMBOL_DECL_RE.test(code)
+        || SAVE_SYMBOL_DEFAULT_IMPORT_RE.test(code)
+        || SAVE_SYMBOL_NAMED_IMPORT_RE.test(code)
 }
 
 function isInternalImport(spec: string): boolean {
@@ -22,16 +41,13 @@ function isInternalImport(spec: string): boolean {
     return spec.startsWith('.') || spec.startsWith('@') || spec.startsWith('/')
 }
 
-function findImportSource(code: string, localName: string): string | null {
-    const defaultRegex = new RegExp(`import\\s+${localName}\\s+from\\s+['"]([^'"]+)['"]`)
-    const namedRegex = new RegExp(`import\\s*{[^}]*\\b${localName}\\b[^}]*}\\s+from\\s+['"]([^'"]+)['"]`)
-
-    const defaultMatch = code.match(defaultRegex)
+function findImportSource(code: string, defaultRe: RegExp, namedRe: RegExp): string | null {
+    const defaultMatch = code.match(defaultRe)
     if (defaultMatch?.[1] && isInternalImport(defaultMatch[1])) {
         return defaultMatch[1]
     }
 
-    const namedMatch = code.match(namedRegex)
+    const namedMatch = code.match(namedRe)
     if (namedMatch?.[1] && isInternalImport(namedMatch[1])) {
         return namedMatch[1]
     }
@@ -40,20 +56,20 @@ function findImportSource(code: string, localName: string): string | null {
 }
 
 function shouldInjectBlockHmr(code: string, id: string): boolean {
-    const cleanId = id.split('?')[0]
-    const normalizedId = cleanId.replace(/\\/g, '/')
-    const isJsLike = JS_LIKE_EXTENSION.test(cleanId)
-    const isBlockSrc = normalizedId.includes('/src/blocks/') || normalizedId.startsWith('src/blocks/')
-
-    if (!isJsLike || !isBlockSrc) return false
     if (!code.includes('registerBlockType')) return false
 
-    const hasMeta = /\bexport\s+const\s+meta\b|\bconst\s+meta\b/.test(code)
-    const hasEdit = hasEditOrSaveSymbol(code, 'edit')
-    const hasSave = hasEditOrSaveSymbol(code, 'save')
+    const cleanId = id.split('?')[0]
+    if (!JS_LIKE_EXTENSION.test(cleanId)) return false
 
-    if (!(hasMeta && hasEdit && hasSave)) return false
+    const normalizedId = cleanId.replace(BACKSLASH_RE, '/')
+    const isBlockSrc = normalizedId.includes('/src/blocks/') || normalizedId.startsWith('src/blocks/')
+    if (!isBlockSrc) return false
+
     if (code.includes('__wpvApplyBlockHmr') || code.includes('__wpvSetupBlockHmr')) return false
+
+    if (!META_DECL_RE.test(code)) return false
+    if (!hasEditSymbol(code)) return false
+    if (!hasSaveSymbol(code)) return false
 
     return true
 }
@@ -94,19 +110,19 @@ function generateDependencyAcceptCode(editImport: string | null, saveImport: str
 `
 }
 
+const EXPORTED_META_DECL_RE = /\bexport\s+(?:const|function|class)\s+meta\b/
+const EXPORTED_META_LIST_RE = /\bexport\s*{\s*[^}]*\bmeta\b[^}]*}\s*;?/
+const EXPORTED_EDIT_DECL_RE = /\bexport\s+(?:const|function|class)\s+edit\b/
+const EXPORTED_EDIT_LIST_RE = /\bexport\s*{\s*[^}]*\bedit\b[^}]*}\s*;?/
+const EXPORTED_SAVE_DECL_RE = /\bexport\s+(?:const|function|class)\s+save\b/
+const EXPORTED_SAVE_LIST_RE = /\bexport\s*{\s*[^}]*\bsave\b[^}]*}\s*;?/
+
 function generateMissingExports(code: string): string {
     const exportList: string[] = []
 
-    const hasExportedMeta = /\bexport\s+(?:const|function|class)\s+meta\b/.test(code) ||
-        /\bexport\s*{\s*[^}]*\bmeta\b[^}]*}\s*;?/.test(code)
-    const hasExportedEdit = /\bexport\s+(?:const|function|class)\s+edit\b/.test(code) ||
-        /\bexport\s*{\s*[^}]*\bedit\b[^}]*}\s*;?/.test(code)
-    const hasExportedSave = /\bexport\s+(?:const|function|class)\s+save\b/.test(code) ||
-        /\bexport\s*{\s*[^}]*\bsave\b[^}]*}\s*;?/.test(code)
-
-    if (!hasExportedMeta) exportList.push('meta')
-    if (!hasExportedEdit) exportList.push('edit')
-    if (!hasExportedSave) exportList.push('save')
+    if (!EXPORTED_META_DECL_RE.test(code) && !EXPORTED_META_LIST_RE.test(code)) exportList.push('meta')
+    if (!EXPORTED_EDIT_DECL_RE.test(code) && !EXPORTED_EDIT_LIST_RE.test(code)) exportList.push('edit')
+    if (!EXPORTED_SAVE_DECL_RE.test(code) && !EXPORTED_SAVE_LIST_RE.test(code)) exportList.push('save')
 
     return exportList.length > 0 ? `export { ${exportList.join(', ')} }\n` : ''
 }
@@ -118,8 +134,8 @@ export async function injectBlockHmrForBlocks(
 ): Promise<string> {
     if (!shouldInjectBlockHmr(code, id)) return code
 
-    const editImport = findImportSource(code, 'edit')
-    const saveImport = findImportSource(code, 'save')
+    const editImport = findImportSource(code, EDIT_DEFAULT_SOURCE_RE, EDIT_NAMED_SOURCE_RE)
+    const saveImport = findImportSource(code, SAVE_DEFAULT_SOURCE_RE, SAVE_NAMED_SOURCE_RE)
     const depAcceptCode = generateDependencyAcceptCode(editImport, saveImport)
     const exportLine = generateMissingExports(code)
 
