@@ -93,7 +93,9 @@ gh-release:
 	@if gh release view "$(TAG)" >/dev/null 2>&1; then \
 		echo "GitHub release $(TAG) already exists; skipping"; \
 	else \
-		gh release create "$(TAG)" --title "$(TAG)" --generate-notes; \
+		highest=$$(git tag --list 'v*' | sort -V | tail -n1); \
+		if [ "$$highest" = "$(TAG)" ]; then latest_flag="--latest"; else latest_flag="--latest=false"; fi; \
+		gh release create "$(TAG)" --title "$(TAG)" --generate-notes $$latest_flag; \
 	fi
 
 release: check
