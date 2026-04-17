@@ -61,7 +61,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
             configureOptimizeDeps(config)
             if (isBuild) {
                 configureDefines(config)
-                configureBuild(config, resolved)
+                configureBuild(config, resolved, baseDir)
             }
         },
         transform: {

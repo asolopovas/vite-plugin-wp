@@ -61,10 +61,19 @@ export function configureOptimizeDeps(config: UserConfig): void {
     }
 }
 
-export function configureBuild(config: UserConfig, options: ResolvedWpPluginOptions): void {
+export function configureBuild(config: UserConfig, options: ResolvedWpPluginOptions, baseDir: string): void {
     const existingExternal = config.build?.rollupOptions?.external
     const externalArray = Array.isArray(existingExternal) ? existingExternal : []
     const existingInput = config.build?.rollupOptions?.input
+
+    if (config.publicDir === undefined) {
+        const publicDirAbs = path.resolve(baseDir, 'public')
+        const outDirAbs = path.resolve(baseDir, options.outDir)
+        const rel = path.relative(publicDirAbs, outDirAbs)
+        if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+            config.publicDir = false
+        }
+    }
 
     config.build = {
         ...config.build,
