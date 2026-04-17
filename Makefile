@@ -24,6 +24,7 @@ help:
 	@echo "  release-patch     bump patch, commit, then release"
 	@echo "  release-minor     bump minor, commit, then release"
 	@echo "  release-major     bump major, commit, then release"
+	@echo "  (each step is idempotent — safe to re-run; pass OTP=<code> for npm 2FA)"
 	@echo ""
 	@echo "Low-level:"
 	@echo "  bump LEVEL=patch  bump version in package.json (no tag, no commit)"
@@ -70,20 +71,35 @@ bump:
 	@echo "Bumped to $$(node -p 'require("./package.json").version')"
 
 tag:
-	@git rev-parse "$(TAG)" >/dev/null 2>&1 && { echo "Tag $(TAG) already exists"; exit 1; } || true
-	git tag -a "$(TAG)" -m "Release $(TAG)"
-	git push origin "$(TAG)"
+	@if git rev-parse "$(TAG)" >/dev/null 2>&1; then \
+		echo "Tag $(TAG) already exists locally; skipping"; \
+	else \
+		git tag -a "$(TAG)" -m "Release $(TAG)"; \
+	fi
+	@if git ls-remote --exit-code --tags origin "$(TAG)" >/dev/null 2>&1; then \
+		echo "Tag $(TAG) already on origin; skipping push"; \
+	else \
+		git push origin "$(TAG)"; \
+	fi
 
 publish:
-	npm publish
+	@if npm view "@asolopovas/vite-plugin-wp@$(PKG_VERSION)" version >/dev/null 2>&1; then \
+		echo "$(PKG_VERSION) already published to npm; skipping"; \
+	else \
+		if [ -n "$(OTP)" ]; then npm publish --otp="$(OTP)"; else npm publish; fi; \
+	fi
 
 gh-release:
-	gh release create "$(TAG)" --title "$(TAG)" --generate-notes
+	@if gh release view "$(TAG)" >/dev/null 2>&1; then \
+		echo "GitHub release $(TAG) already exists; skipping"; \
+	else \
+		gh release create "$(TAG)" --title "$(TAG)" --generate-notes; \
+	fi
 
 release: check
 	@git diff --quiet -- package.json || (echo "package.json has uncommitted changes; commit first"; exit 1)
 	$(MAKE) tag
-	$(MAKE) publish
+	$(MAKE) publish OTP="$(OTP)"
 	$(MAKE) gh-release
 	@echo "Released $(TAG)"
 

@@ -85,8 +85,8 @@ Releases are automated through the `Makefile`. Each release runs `make check`, c
 
 - Never bypass `make check`. The release target runs it before tagging; do not use `--no-verify` or skip it manually.
 - Do not publish unless explicitly instructed. "Commit and push" is not the same as "release".
-- npm uses 2FA — if `make publish` fails with E403, the user will supply a fresh token; do not paste your own.
-- If a release fails partway (e.g. tag created but `npm publish` failed), finish the pieces individually (`make publish`, then `make gh-release`). Do NOT delete the tag — `gh release create` against the existing tag is fine.
+- npm uses 2FA. Pass the OTP via `make release OTP=<code>` (or `make publish OTP=<code>`) — the Makefile forwards it to `npm publish --otp=...`. Never paste your own token.
+- **Every release step is idempotent.** `tag`, `publish`, and `gh-release` each check whether the work is already done (tag present locally/remotely, version already on npm, GitHub release exists) and skip themselves if so. That means: if a release fails partway (e.g. OTP mistyped so `publish` failed but `tag` succeeded), just re-run `make release OTP=<code>` — it will skip the tag, re-attempt publish, and then create the GitHub release. Do NOT delete the tag to "start over".
 
 ### E2E (self-contained wp-env)
 
