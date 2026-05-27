@@ -25,15 +25,19 @@ const META_DECL_RE = /\bexport\s+const\s+meta\b|\bconst\s+meta\b/
 const BACKSLASH_RE = /\\/g
 
 function hasEditSymbol(code: string): boolean {
-    return EDIT_SYMBOL_DECL_RE.test(code)
-        || EDIT_SYMBOL_DEFAULT_IMPORT_RE.test(code)
-        || EDIT_SYMBOL_NAMED_IMPORT_RE.test(code)
+    return (
+        EDIT_SYMBOL_DECL_RE.test(code) ||
+        EDIT_SYMBOL_DEFAULT_IMPORT_RE.test(code) ||
+        EDIT_SYMBOL_NAMED_IMPORT_RE.test(code)
+    )
 }
 
 function hasSaveSymbol(code: string): boolean {
-    return SAVE_SYMBOL_DECL_RE.test(code)
-        || SAVE_SYMBOL_DEFAULT_IMPORT_RE.test(code)
-        || SAVE_SYMBOL_NAMED_IMPORT_RE.test(code)
+    return (
+        SAVE_SYMBOL_DECL_RE.test(code) ||
+        SAVE_SYMBOL_DEFAULT_IMPORT_RE.test(code) ||
+        SAVE_SYMBOL_NAMED_IMPORT_RE.test(code)
+    )
 }
 
 function isInternalImport(spec: string): boolean {
@@ -90,13 +94,9 @@ function generateDependencyAcceptCode(editImport: string | null, saveImport: str
 
     if (depImports.length === 0) return ''
 
-    const depsList = depImports.map(dep => `'${dep}'`).join(', ')
-    const editExpr = editIndex !== null
-        ? `mods?.[${editIndex}]?.default ?? mods?.[${editIndex}]?.edit ?? edit`
-        : 'edit'
-    const saveExpr = saveIndex !== null
-        ? `mods?.[${saveIndex}]?.default ?? mods?.[${saveIndex}]?.save ?? save`
-        : 'save'
+    const depsList = depImports.map((dep) => `'${dep}'`).join(', ')
+    const editExpr = editIndex !== null ? `mods?.[${editIndex}]?.default ?? mods?.[${editIndex}]?.edit ?? edit` : 'edit'
+    const saveExpr = saveIndex !== null ? `mods?.[${saveIndex}]?.default ?? mods?.[${saveIndex}]?.save ?? save` : 'save'
 
     return `
         const __wpvBlockDeps = [${depsList}]
@@ -127,11 +127,7 @@ function generateMissingExports(code: string): string {
     return exportList.length > 0 ? `export { ${exportList.join(', ')} }\n` : ''
 }
 
-export async function injectBlockHmrForBlocks(
-    code: string,
-    id: string,
-    hmrLogger: string,
-): Promise<string> {
+export async function injectBlockHmrForBlocks(code: string, id: string, hmrLogger: string): Promise<string> {
     if (!shouldInjectBlockHmr(code, id)) return code
 
     const editImport = findImportSource(code, EDIT_DEFAULT_SOURCE_RE, EDIT_NAMED_SOURCE_RE)

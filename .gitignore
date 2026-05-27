@@ -2,7 +2,7 @@ node_modules
 dist
 *.log
 .DS_Store
-bun.lock
+.pi-lens
 bun.lockb
 .playwright/
 test-results/

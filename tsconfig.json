@@ -14,7 +14,7 @@
         "sourceMap": true,
         "outDir": "dist",
         "rootDir": "src",
-        "types": ["bun-types", "node"]
+        "types": ["node"]
     },
     "include": ["src/**/*.ts"],
     "exclude": ["dist", "node_modules", "tests"]

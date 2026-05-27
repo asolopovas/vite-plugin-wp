@@ -13,8 +13,10 @@ Prefer `make` targets when available.
 | All tests | `make test` |
 | Unit tests | `make test-unit` or `bun run test` |
 | Type check | `make typecheck` or `bun run typecheck` |
-| Lint | `make lint` |
-| Release gate | `make check` |
+| Lint | `make lint` or `bun run lint` |
+| Format | `bun run format` / `bun run format:check` |
+| Quality gate | `bun run quality` (format, lint, type check, build, unit tests) |
+| Release gate | `make check` or `bun run check` |
 | Clean | `make clean` |
 | All e2e | `bun run test:e2e` |
 | HMR e2e | `bun run test:e2e:hmr` |
@@ -66,7 +68,7 @@ For consumer-project HMR checks: set `VITE_MODE=development`, start `bun run dev
 ## Validation before handoff
 
 - Docs-only: check markdown, links, and commands.
-- `src/` changes: `bun run test` and `bun run typecheck`.
+- `src/` changes: `bun run test`, `bun run typecheck`, and relevant quality checks (`bun run lint`, `bun run format:check`).
 - Transform/HMR changes: `bun run test:e2e:hmr` or a documented `playwright-cli` smoke.
 - Release tooling: run the narrow dry-run or script path.
 - Report skipped validation and why.

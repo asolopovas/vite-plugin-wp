@@ -22,7 +22,7 @@
     },
     "attributes": {
         "blockId": { "type": "string", "default": "test" },
-        "layout":  { "type": "string", "default": "content" },
-        "test":    { "type": "string", "default": "test" }
+        "layout": { "type": "string", "default": "content" },
+        "test": { "type": "string", "default": "test" }
     }
 }

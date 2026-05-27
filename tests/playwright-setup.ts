@@ -49,21 +49,38 @@ function getLatestMtimeMs(paths: string[]): number {
     while (stack.length) {
         const current = stack.pop()!
         let stats: fs.Stats
-        try { stats = fs.statSync(current) } catch { continue }
-        if (stats.isFile()) { latest = Math.max(latest, stats.mtimeMs); continue }
+        try {
+            stats = fs.statSync(current)
+        } catch {
+            continue
+        }
+        if (stats.isFile()) {
+            latest = Math.max(latest, stats.mtimeMs)
+            continue
+        }
         if (!stats.isDirectory()) continue
         let dir: fs.Dir
-        try { dir = fs.opendirSync(current) } catch { continue }
+        try {
+            dir = fs.opendirSync(current)
+        } catch {
+            continue
+        }
         try {
             let entry: fs.Dirent | null
             while ((entry = dir.readSync())) {
                 const childPath = path.join(current, entry.name)
                 if (entry.isDirectory()) stack.push(childPath)
                 else if (entry.isFile()) {
-                    try { latest = Math.max(latest, fs.statSync(childPath).mtimeMs) } catch {}
+                    try {
+                        latest = Math.max(latest, fs.statSync(childPath).mtimeMs)
+                    } catch {}
                 }
             }
-        } finally { try { dir.closeSync() } catch {} }
+        } finally {
+            try {
+                dir.closeSync()
+            } catch {}
+        }
     }
     return latest
 }
@@ -72,7 +89,11 @@ function isFixtureBuildStale(): boolean {
     if (process.env.WP_TEST_SKIP_BUILD === '1') return false
     if (process.env.WP_TEST_FORCE_BUILD === '1') return true
     let manifestMtime = 0
-    try { manifestMtime = fs.statSync(PATHS.fixtureManifest).mtimeMs } catch { return true }
+    try {
+        manifestMtime = fs.statSync(PATHS.fixtureManifest).mtimeMs
+    } catch {
+        return true
+    }
     return getLatestMtimeMs(SOURCE_PATHS) > manifestMtime
 }
 
@@ -80,7 +101,9 @@ async function fetchStatus(url: string, timeoutMs = 2000): Promise<number> {
     try {
         const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
         return res.status
-    } catch { return 0 }
+    } catch {
+        return 0
+    }
 }
 
 async function fetchOk(url: string, timeoutMs = 2000): Promise<boolean> {
@@ -88,15 +111,11 @@ async function fetchOk(url: string, timeoutMs = 2000): Promise<boolean> {
     return status >= 200 && status < 400
 }
 
-async function waitFor(
-    check: () => Promise<boolean>,
-    maxWaitMs: number,
-    intervalMs = 500
-): Promise<boolean> {
+async function waitFor(check: () => Promise<boolean>, maxWaitMs: number, intervalMs = 500): Promise<boolean> {
     const start = Date.now()
     while (Date.now() - start < maxWaitMs) {
         if (await check()) return true
-        await new Promise(r => setTimeout(r, intervalMs))
+        await new Promise((r) => setTimeout(r, intervalMs))
     }
     return false
 }
@@ -108,11 +127,7 @@ function ensurePluginBuilt(): void {
 }
 
 async function isWpEnvReady(): Promise<boolean> {
-    const targets = [
-        `${WP_ENV_HOST}/wp-json/`,
-        `${WP_ENV_HOST}/?rest_route=/`,
-        `${WP_ENV_HOST}/wp-login.php`,
-    ]
+    const targets = [`${WP_ENV_HOST}/wp-json/`, `${WP_ENV_HOST}/?rest_route=/`, `${WP_ENV_HOST}/wp-login.php`]
     for (const url of targets) {
         const status = await fetchStatus(url)
         if (status > 0 && status < 500) return true
@@ -135,10 +150,11 @@ async function ensureWpEnvRestRoute(): Promise<void> {
     if (await fetchOk(`${WP_ENV_HOST}/wp-json/`)) return
     log('Flushing rewrite rules so REST routes respond')
     try {
-        execSync('bun x wp-env run cli wp rewrite structure "/%postname%/" --hard',
-            { cwd: PLUGIN_ROOT, stdio: 'inherit' })
-        execSync('bun x wp-env run cli wp rewrite flush --hard',
-            { cwd: PLUGIN_ROOT, stdio: 'inherit' })
+        execSync('bun x wp-env run cli wp rewrite structure "/%postname%/" --hard', {
+            cwd: PLUGIN_ROOT,
+            stdio: 'inherit',
+        })
+        execSync('bun x wp-env run cli wp rewrite flush --hard', { cwd: PLUGIN_ROOT, stdio: 'inherit' })
     } catch (e) {
         log(`Warning: rewrite flush failed: ${(e as Error).message}`)
     }
@@ -227,7 +243,7 @@ async function verifyViteMode(expected: string): Promise<void> {
     const url = `${WP_ENV_HOST}/wp-admin/admin-ajax.php?action=check_vite_dev_mode`
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
     if (!res.ok) throw new Error(`admin-ajax check failed (${res.status}). Is host-plugin active?`)
-    const info = await res.json() as { isDev?: boolean }
+    const info = (await res.json()) as { isDev?: boolean }
     const expectedIsDev = expected === 'development'
     if (Boolean(info?.isDev) !== expectedIsDev) {
         throw new Error(
@@ -244,15 +260,17 @@ async function warmTestResourceCache(): Promise<void> {
         await page.goto(`${WP_ENV_HOST}/wp-admin/post-new.php`, { waitUntil: 'domcontentloaded', timeout: 30000 })
         const nonceReady = await waitFor(
             () => page.evaluate(() => Boolean((window as any).wpApiSettings?.nonce)),
-            5000, 250
+            5000,
+            250
         )
         if (!nonceReady) return
 
         const cache = readCache<{ postId: number }>('test-post.json', { cacheDir: META_DIR })
         let valid = false
         if (cache?.postId) {
-            const res = await page.request.get(`${WP_ENV_HOST}/wp-json/wp/v2/posts/${cache.postId}`,
-                { failOnStatusCode: false })
+            const res = await page.request.get(`${WP_ENV_HOST}/wp-json/wp/v2/posts/${cache.postId}`, {
+                failOnStatusCode: false,
+            })
             valid = res.ok()
         }
         if (!valid) {
@@ -301,7 +319,9 @@ async function globalSetup() {
         await startViteServer(Number(process.env.VITE_PORT ?? 5173))
     } else {
         if (fs.existsSync(PATHS.fixtureHotFile)) {
-            try { fs.unlinkSync(PATHS.fixtureHotFile) } catch {}
+            try {
+                fs.unlinkSync(PATHS.fixtureHotFile)
+            } catch {}
         }
         buildFixtureIfNeeded()
     }

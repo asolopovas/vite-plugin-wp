@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help install build dev test test-unit typecheck lint check clean \
+.PHONY: help install build dev test test-unit typecheck lint format format-check quality check clean \
         release release-patch release-minor release-major \
         bump tag publish gh-release deploy
 
@@ -15,8 +15,11 @@ help:
 	@echo "  test              unit + e2e (everything)"
 	@echo "  test-unit         unit only"
 	@echo "  typecheck         tsc --noEmit"
-	@echo "  lint              oxlint + tsc (stops at first failure)"
-	@echo "  check             lint + test-unit + build (release gate)"
+	@echo "  lint              oxlint"
+	@echo "  format            oxfmt --write"
+	@echo "  format-check      oxfmt --check"
+	@echo "  quality           format-check + lint + typecheck + build + unit tests"
+	@echo "  check             quality release gate"
 	@echo "  clean             remove dist/"
 	@echo ""
 	@echo "Release (runs check, git tag, npm publish, gh release):"
@@ -54,13 +57,19 @@ typecheck:
 	bun run typecheck
 
 lint:
-	@printf '── oxlint ───────────────────────────────────────\n'
-	@bun x oxlint src tests
-	@printf '\n── tsc ─────────────────────────────────────────\n'
-	@bun x tsc --noEmit
-	@printf 'OK\n'
+	bun run lint
 
-check: lint test-unit build
+format:
+	bun run format
+
+format-check:
+	bun run format:check
+
+quality:
+	bun run quality
+
+check:
+	bun run check
 
 clean:
 	rm -rf dist
@@ -68,7 +77,7 @@ clean:
 bump:
 	@test -n "$(LEVEL)" || { echo "Usage: make bump LEVEL=patch|minor|major"; exit 1; }
 	npm version $(LEVEL) --no-git-tag-version
-	@echo "Bumped to $$(node -p 'require("./package.json").version')"
+	@echo "Bumped to `node -p 'require(process.argv[1]).version' ./package.json`"
 
 tag:
 	@if git rev-parse "$(TAG)" >/dev/null 2>&1; then \
@@ -93,7 +102,7 @@ gh-release:
 	@if gh release view "$(TAG)" >/dev/null 2>&1; then \
 		echo "GitHub release $(TAG) already exists; skipping"; \
 	else \
-		highest=$$(git tag --list 'v*' | sort -V | tail -n1); \
+		highest=`git tag --list 'v*' | sort -V | tail -n1`; \
 		if [ "$$highest" = "$(TAG)" ]; then latest_flag="--latest"; else latest_flag="--latest=false"; fi; \
 		gh release create "$(TAG)" --title "$(TAG)" --generate-notes $$latest_flag; \
 	fi
@@ -108,6 +117,6 @@ release: check
 release-patch release-minor release-major: release-%:
 	$(MAKE) bump LEVEL=$*
 	git add package.json
-	git commit -m "chore: release v$$(node -p 'require("./package.json").version')"
+	git commit -m "chore: release v`node -p 'require(process.argv[1]).version' ./package.json`"
 	git push origin main
 	$(MAKE) release

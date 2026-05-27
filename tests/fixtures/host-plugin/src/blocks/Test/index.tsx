@@ -24,7 +24,7 @@ export const edit = ({ clientId, attributes, setAttributes }: any) => {
     const isDev = import.meta.env.DEV
 
     const blockProps = useBlockProps({
-        className: `test-block-id-${ blockId } hmr-test${ isDev ? ' development-mode dev' : '' }`,
+        className: `test-block-id-${blockId} hmr-test${isDev ? ' development-mode dev' : ''}`,
         ref: containerRef,
         ...(isDev ? { 'data-vite-mode': 'development' } : {}),
     })
@@ -32,11 +32,11 @@ export const edit = ({ clientId, attributes, setAttributes }: any) => {
     return (
         <>
             <InspectorControls>
-                <PanelBody title={ 'Test Panel' } initialOpen={ true }>
+                <PanelBody title={'Test Panel'} initialOpen={true}>
                     <div>Test Panel Body</div>
                 </PanelBody>
             </InspectorControls>
-            <div { ...blockProps }>Test Block</div>
+            <div {...blockProps}>Test Block</div>
         </>
     )
 }
@@ -44,17 +44,17 @@ export const edit = ({ clientId, attributes, setAttributes }: any) => {
 export const save = ({ attributes }: any) => {
     const { blockId } = attributes
     const blockProps = useBlockProps.save({
-        className: `test-block-id-${ blockId }`,
+        className: `test-block-id-${blockId}`,
     })
-    return (<div { ...blockProps }>Save Block</div>)
+    return <div {...blockProps}>Save Block</div>
 }
 
 registerBlockType(meta.name, {
     ...meta,
     attributes: {
         blockId: { type: 'string', default: 'test' },
-        layout:  { type: 'string', default: 'content' },
-        test:    { type: 'string', default: 'test' },
+        layout: { type: 'string', default: 'content' },
+        test: { type: 'string', default: 'test' },
         __hmrTimestamp: { type: 'number', default: 0 },
     },
     edit,

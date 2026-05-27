@@ -11,9 +11,7 @@ export type WpPluginOptions = {
     hotFile?: string
 }
 
-export type ResolvedWpPluginOptions = Required<
-    Omit<WpPluginOptions, 'input' | 'base' | 'manifest'>
-> & {
+export type ResolvedWpPluginOptions = Required<Omit<WpPluginOptions, 'input' | 'base' | 'manifest'>> & {
     input?: string | string[]
     base?: string
     manifest: string | boolean

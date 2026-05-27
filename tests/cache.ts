@@ -12,9 +12,7 @@ type CacheOptions = {
 }
 
 function resolveCachePath(cacheDir: string, filename: string): string {
-    return path.isAbsolute(cacheDir)
-        ? path.join(cacheDir, filename)
-        : path.join(process.cwd(), cacheDir, filename)
+    return path.isAbsolute(cacheDir) ? path.join(cacheDir, filename) : path.join(process.cwd(), cacheDir, filename)
 }
 
 export function readCache<T>(filename: string, options: CacheOptions = {}): CacheData<T> | null {

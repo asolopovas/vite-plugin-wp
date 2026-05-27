@@ -30,9 +30,15 @@ export type TestFixtures = {
 }
 
 const IGNORED_ERRORS = [
-    'favicon.ico', '404', 'Failed to load resource', 'net::ERR_FAILED',
-    "'contentDocument' as it is null", 'beforeunload', 'Blocked attempt to show a',
-    'ResizeObserver loop', 'createRoot() on a container that has already been passed',
+    'favicon.ico',
+    '404',
+    'Failed to load resource',
+    'net::ERR_FAILED',
+    "'contentDocument' as it is null",
+    'beforeunload',
+    'Blocked attempt to show a',
+    'ResizeObserver loop',
+    'createRoot() on a container that has already been passed',
 ]
 
 const EDITOR_CANVAS_SELECTOR = 'iframe[name="editor-canvas"]'
@@ -61,7 +67,7 @@ export function getMetaDir(): string {
 }
 
 export async function hasEditorCanvasIframe(page: Page): Promise<boolean> {
-    return await page.locator(EDITOR_CANVAS_SELECTOR).count() > 0
+    return (await page.locator(EDITOR_CANVAS_SELECTOR).count()) > 0
 }
 
 export async function createCanvasLike(page: Page): Promise<CanvasLike> {
@@ -74,61 +80,62 @@ export async function createCanvasLike(page: Page): Promise<CanvasLike> {
 }
 
 function shouldIgnoreError(msg: string, extraIgnoredErrors: string[] = []): boolean {
-    return [...IGNORED_ERRORS, ...extraIgnoredErrors].some(pattern => msg.includes(pattern))
+    return [...IGNORED_ERRORS, ...extraIgnoredErrors].some((pattern) => msg.includes(pattern))
 }
 
 export function createJsErrorCollector(page: Page, extraIgnoredErrors: string[] = []): string[] {
     const errors: string[] = []
-    page.on('console', msg => {
+    page.on('console', (msg) => {
         if (msg.type() === 'error' && !shouldIgnoreError(msg.text(), extraIgnoredErrors)) {
             errors.push(msg.text())
         }
     })
-    page.on('pageerror', err => {
+    page.on('pageerror', (err) => {
         if (!shouldIgnoreError(err.message, extraIgnoredErrors)) errors.push(err.message)
     })
     return errors
 }
 
 async function waitForBlockEditorReady(page: Page): Promise<void> {
-    await expect.poll(async () => {
-        return page.evaluate(() => {
-            const wp = (window as any).wp
-            const select = wp?.data?.select
-            if (!select) return false
-            const blockEditor = select('core/block-editor')
-            if (!blockEditor || typeof blockEditor.getBlocks !== 'function') return false
+    await expect
+        .poll(async () => {
+            return page.evaluate(() => {
+                const wp = (window as any).wp
+                const select = wp?.data?.select
+                if (!select) return false
+                const blockEditor = select('core/block-editor')
+                if (!blockEditor || typeof blockEditor.getBlocks !== 'function') return false
 
-            const guideClose = document.querySelector(
-                '.components-guide__container button[aria-label="Close"]'
-            ) as HTMLButtonElement | null
-            guideClose?.click()
+                const guideClose = document.querySelector(
+                    '.components-guide__container button[aria-label="Close"]'
+                ) as HTMLButtonElement | null
+                guideClose?.click()
 
-            if (document.querySelector('.editor-post-locked-modal')) {
-                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-            }
-            return true
+                if (document.querySelector('.editor-post-locked-modal')) {
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+                }
+                return true
+            })
         })
-    }).toBe(true)
+        .toBe(true)
 }
 
 export async function bootEditor(page: Page, wpHost: string, postId?: number): Promise<void> {
-    const url = postId
-        ? `${wpHost}/wp-admin/post.php?post=${postId}&action=edit`
-        : `${wpHost}/wp-admin/post-new.php`
+    const url = postId ? `${wpHost}/wp-admin/post.php?post=${postId}&action=edit` : `${wpHost}/wp-admin/post-new.php`
 
     await page.goto(url, { waitUntil: 'load' })
 
     const takeOver = page.getByRole('link', { name: 'Take over' })
     if (await takeOver.isVisible().catch(() => false)) {
-        page.on('dialog', d => d.accept())
+        page.on('dialog', (d) => d.accept())
         await takeOver.click()
     }
 
     await waitForBlockEditorReady(page)
 
     await expect(
-        page.locator(EDITOR_CANVAS_SELECTOR)
+        page
+            .locator(EDITOR_CANVAS_SELECTOR)
             .or(page.locator('.editor-styles-wrapper'))
             .or(page.locator('.block-editor-writing-flow'))
     ).toBeVisible()
@@ -142,7 +149,7 @@ export async function bootEditor(page: Page, wpHost: string, postId?: number): P
 
     if (postId) {
         await page.evaluate(() => {
-            (window as any).wp.data.dispatch('core/block-editor').resetBlocks([])
+            ;(window as any).wp.data.dispatch('core/block-editor').resetBlocks([])
         })
     }
 }
@@ -163,10 +170,10 @@ export const test = base.extend<TestFixtures>({
     },
 
     assetInfo: async ({ editorPage }, use) => {
-        const scriptSrcs = await editorPage.$$eval('script[src]', els => els.map(el => el.getAttribute('src')))
-        const linkHrefs = await editorPage.$$eval('link[href]', els => els.map(el => el.getAttribute('href')))
+        const scriptSrcs = await editorPage.$$eval('script[src]', (els) => els.map((el) => el.getAttribute('src')))
+        const linkHrefs = await editorPage.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
         const vitePort = process.env.VITE_PORT ?? '5173'
-        const hasDevAssets = [...scriptSrcs, ...linkHrefs].some(s => s?.includes(`localhost:${vitePort}`))
+        const hasDevAssets = [...scriptSrcs, ...linkHrefs].some((s) => s?.includes(`localhost:${vitePort}`))
         await use({ scriptSrcs, linkHrefs, hasDevAssets })
     },
 
@@ -184,10 +191,7 @@ export async function createAuthContext(
     return browser.newContext({ storageState: getAuthStatePath(), ...contextOptions })
 }
 
-export async function createAuthPage(
-    browser: Browser,
-    contextOptions: BrowserContextOptions = {}
-): Promise<Page> {
+export async function createAuthPage(browser: Browser, contextOptions: BrowserContextOptions = {}): Promise<Page> {
     const ctx = await createAuthContext(browser, contextOptions)
     return ctx.newPage()
 }

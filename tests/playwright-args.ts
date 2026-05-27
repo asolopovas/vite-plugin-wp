@@ -1,7 +1,7 @@
 type ViteMode = 'development' | 'production'
 
 function resolveGrepValue(argv: string[]): string {
-    const grepIdx = argv.findIndex(arg => arg === '--grep' || arg === '-g')
+    const grepIdx = argv.findIndex((arg) => arg === '--grep' || arg === '-g')
     if (grepIdx === -1) return ''
     return argv[grepIdx + 1] ?? ''
 }

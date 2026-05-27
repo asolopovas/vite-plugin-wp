@@ -26,7 +26,10 @@ export const PROJECT_ALIASES = {
     lib: 'src/lib',
 } as const
 
-export const RESOLVE_ALIASES: Array<{ find: string | RegExp; key: keyof typeof PROJECT_ALIASES | keyof typeof SHIM_PATHS }> = [
+export const RESOLVE_ALIASES: Array<{
+    find: string | RegExp
+    key: keyof typeof PROJECT_ALIASES | keyof typeof SHIM_PATHS
+}> = [
     { find: '@src', key: 'src' },
     { find: '@store', key: 'store' },
     { find: '@blocks', key: 'blocks' },
@@ -71,11 +74,7 @@ export const ROLLUP_GLOBALS_MAP: Record<string, string> = {
     moment: 'moment',
 }
 
-export const ROLLUP_EXTERNAL_DEFAULT = [
-    WORDPRESS_EXTERNAL_REGEX,
-    'jquery',
-    'moment',
-]
+export const ROLLUP_EXTERNAL_DEFAULT = [WORDPRESS_EXTERNAL_REGEX, 'jquery', 'moment']
 
 export const BLOCK_INDEX_MARKERS = ['blocks/index', 'editor', 'vite-blocks']
 export const JS_LIKE_EXTENSION = /\.(jsx|tsx?|js)$/

@@ -31,7 +31,9 @@ export function injectIndexDepsAccept(code: string, id: string, hmrLogger: strin
         .map((spec) => `'/@fs${path.resolve(importerDir, spec)}'`)
         .join(', ')
 
-    return code + `
+    return (
+        code +
+        `
 var __wpvHmrLogger = __wpvHmrLogger ?? ${hmrLogger};
 if (import.meta.hot) {
   import.meta.hot.accept([${depsList}], (mods) => {
@@ -39,4 +41,5 @@ if (import.meta.hot) {
   })
 }
 `
+    )
 }

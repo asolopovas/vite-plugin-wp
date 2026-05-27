@@ -9,12 +9,12 @@ if (import.meta.hot) {
 
     import.meta.hot.accept(() => {
         __wpvHmrLogger.log('JS/TS module updated via HMR')
-        dispatchHmrEvent(window, 'wp-vite-block-hmr-update', {source: 'js-update'})
+        dispatchHmrEvent(window, 'wp-vite-block-hmr-update', { source: 'js-update' })
     })
 
-    import.meta.hot.on('vite:beforeUpdate', ({updates}) => {
+    import.meta.hot.on('vite:beforeUpdate', ({ updates }) => {
         storeLastUpdates(updates)
-        const {jsUpdates, cssUpdates} = categorizeUpdates(updates)
+        const { jsUpdates, cssUpdates } = categorizeUpdates(updates)
         const hasJsUpdate = jsUpdates.length > 0
 
         removeDuplicateAndDeferredCssUpdates(updates, cssUpdates, hasJsUpdate)
@@ -30,9 +30,9 @@ if (import.meta.hot) {
         processJsUpdates(editor, jsUpdates)
     })
 
-    import.meta.hot.on('vite:afterUpdate', ({updates}) => {
+    import.meta.hot.on('vite:afterUpdate', ({ updates }) => {
         const queuedCssUpdates = consumeQueuedCssUpdates()
-        const {jsUpdates} = categorizeUpdates(updates)
+        const { jsUpdates } = categorizeUpdates(updates)
         if (jsUpdates.length > 0) return
 
         const cssUpdates = queuedCssUpdates.length > 0 ? queuedCssUpdates : updates
@@ -70,12 +70,12 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
     const inFlightRequests = window.__wpvInFlightRequests || (window.__wpvInFlightRequests = new Map())
     const existing = inFlightRequests.get(cleanPath)
 
-    if (existing && (now - existing.time) < __wpvHmrDebounceMs) {
+    if (existing && now - existing.time < __wpvHmrDebounceMs) {
         __wpvHmrLogger.debug?.('[wp-vite] HMR: skipping duplicate request for', cleanPath)
         return existing.promise
     }
 
-    inFlightRequests.set(cleanPath, {promise: null, time: now})
+    inFlightRequests.set(cleanPath, { promise: null, time: now })
     const timestamp = batchTimestamp || now
     const [, blockDir, componentType] = match
 
@@ -88,25 +88,29 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
     const origin = getViteOrigin()
     const withOrigin = (modulePath) => resolveWithOrigin(modulePath, origin)
 
-    const loader = typeof window.__wpvBlockHmrLoader === 'function'
-        ? window.__wpvBlockHmrLoader
-        : (modulePath) => import(/* @vite-ignore */ modulePath)
+    const loader =
+        typeof window.__wpvBlockHmrLoader === 'function'
+            ? window.__wpvBlockHmrLoader
+            : (modulePath) => import(/* @vite-ignore */ modulePath)
 
-    const applyLoaderPromise = typeof window.__wpvBlockHmrApply === 'function'
-        ? Promise.resolve(window.__wpvBlockHmrApply)
-        : import('virtual:vite-plugin-wp/block-hmr').then((mod) => mod.applyBlockHmr)
+    const applyLoaderPromise =
+        typeof window.__wpvBlockHmrApply === 'function'
+            ? Promise.resolve(window.__wpvBlockHmrApply)
+            : import('virtual:vite-plugin-wp/block-hmr').then((mod) => mod.applyBlockHmr)
 
     const loadModule = () => loader(`${withOrigin(cleanPath)}?t=${timestamp}`)
 
     const trackPromise = (promise) => {
         const entry = inFlightRequests.get(cleanPath)
         if (entry) entry.promise = promise
-        promise.catch(() => inFlightRequests.delete(cleanPath)).finally(() => {
-            setTimeout(() => {
-                const currentEntry = inFlightRequests.get(cleanPath)
-                if (currentEntry && currentEntry.time === now) inFlightRequests.delete(cleanPath)
-            }, __wpvHmrDebounceMs)
-        })
+        promise
+            .catch(() => inFlightRequests.delete(cleanPath))
+            .finally(() => {
+                setTimeout(() => {
+                    const currentEntry = inFlightRequests.get(cleanPath)
+                    if (currentEntry && currentEntry.time === now) inFlightRequests.delete(cleanPath)
+                }, __wpvHmrDebounceMs)
+            })
         return promise
     }
 
@@ -115,7 +119,10 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
             if (typeof applyBlockHmr !== 'function') return
             const nextEdit = componentType === 'edit' ? (mod?.default ?? mod?.edit ?? mod) : current.edit
             const nextSave = componentType === 'save' ? (mod?.default ?? mod?.save ?? mod) : current.save
-            applyBlockHmr({meta: mappedMeta, edit: nextEdit, save: nextSave}, {meta: mappedMeta, edit: nextEdit, save: nextSave})
+            applyBlockHmr(
+                { meta: mappedMeta, edit: nextEdit, save: nextSave },
+                { meta: mappedMeta, edit: nextEdit, save: nextSave }
+            )
         })
         return trackPromise(promise)
     }
@@ -125,23 +132,25 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
     const getBlockType = wpBlocks?.getBlockType
     const registerBlockType = wpBlocks?.registerBlockType
 
-    const guardedLoad = (getBlockType && registerBlockType)
-        ? Promise.resolve().then(() => {
-            let restored = false
-            const descriptor = Object.getOwnPropertyDescriptor(wpBlocks, 'registerBlockType')
-            if (!descriptor || descriptor.writable || descriptor.set || descriptor.configurable) {
-                wpBlocks.registerBlockType = (name, settings) => getBlockType(name) || registerBlockType(name, settings)
-                restored = true
-            }
-            return loadIndexModule().finally(() => {
-                if (restored) wpBlocks.registerBlockType = registerBlockType
-            })
-        })
-        : loadIndexModule()
+    const guardedLoad =
+        getBlockType && registerBlockType
+            ? Promise.resolve().then(() => {
+                  let restored = false
+                  const descriptor = Object.getOwnPropertyDescriptor(wpBlocks, 'registerBlockType')
+                  if (!descriptor || descriptor.writable || descriptor.set || descriptor.configurable) {
+                      wpBlocks.registerBlockType = (name, settings) =>
+                          getBlockType(name) || registerBlockType(name, settings)
+                      restored = true
+                  }
+                  return loadIndexModule().finally(() => {
+                      if (restored) wpBlocks.registerBlockType = registerBlockType
+                  })
+              })
+            : loadIndexModule()
 
     const promise = Promise.all([guardedLoad, applyLoaderPromise]).then(([mod, applyBlockHmr]) => {
         if (mod?.meta && typeof applyBlockHmr === 'function') {
-            applyBlockHmr({meta: mod.meta, edit: mod.edit, save: mod.save}, mod)
+            applyBlockHmr({ meta: mod.meta, edit: mod.edit, save: mod.save }, mod)
         }
     })
     return trackPromise(promise)
@@ -181,9 +190,7 @@ async function applyCssModuleUpdates(doc, updatePaths, origin, timestampStr) {
 function buildUrl(path, origin, timestampStr) {
     const resolvedOrigin = getResolvedOrigin(origin)
     const raw = stripQuery(path)
-    const url = raw.startsWith('http')
-        ? new URL(raw)
-        : new URL(raw.startsWith('/') ? raw : `/${raw}`, resolvedOrigin)
+    const url = raw.startsWith('http') ? new URL(raw) : new URL(raw.startsWith('/') ? raw : `/${raw}`, resolvedOrigin)
     url.searchParams.set('direct', '')
     if (timestampStr) url.searchParams.set('t', timestampStr)
     return url
@@ -200,7 +207,7 @@ function categorizeUpdates(updates) {
             jsUpdates.push(update)
         }
     }
-    return {jsUpdates, cssUpdates}
+    return { jsUpdates, cssUpdates }
 }
 
 function consumeQueuedCssUpdates() {
@@ -242,46 +249,50 @@ function deduplicateLinks(links, origin, entryNormalized, matchesUpdatePath) {
 
 function dispatchHmrEvent(target, eventName, detail = {}) {
     if (typeof target?.dispatchEvent !== 'function') return
-    target.dispatchEvent(new CustomEvent(eventName, {
-        detail: {timestamp: Date.now(), ...detail}
-    }))
+    target.dispatchEvent(
+        new CustomEvent(eventName, {
+            detail: { timestamp: Date.now(), ...detail },
+        })
+    )
 }
 
 async function expandCssUpdatePaths(doc, updatePaths, origin) {
     const normalizedUpdates = new Set(updatePaths.map(normalizeCssPath).filter(Boolean))
-    if (normalizedUpdates.size === 0) return {effectivePaths: updatePaths, importPaths: []}
+    if (normalizedUpdates.size === 0) return { effectivePaths: updatePaths, importPaths: [] }
 
     const links = getStylesheetLinks(doc)
-    if (links.length === 0) return {effectivePaths: updatePaths, importPaths: []}
+    if (links.length === 0) return { effectivePaths: updatePaths, importPaths: [] }
 
     const importRegex = /@import\s+(?:url\()?['"]?([^'")\s]+)['"]?\)?/g
     const resolvedOrigin = getResolvedOrigin(origin)
 
-    const entries = await Promise.all(links.map(async (link) => {
-        const href = link.getAttribute('href')
-        if (!href) return null
+    const entries = await Promise.all(
+        links.map(async (link) => {
+            const href = link.getAttribute('href')
+            if (!href) return null
 
-        try {
-            const url = new URL(href, resolvedOrigin)
-            const res = await fetch(url.toString(), {cache: 'no-store'})
-            if (!res.ok) return null
+            try {
+                const url = new URL(href, resolvedOrigin)
+                const res = await fetch(url.toString(), { cache: 'no-store' })
+                if (!res.ok) return null
 
-            const text = await res.text()
-            const imports = []
-            let match
-            while ((match = importRegex.exec(text)) !== null) {
-                const importHref = match[1]
-                if (importHref && !importHref.startsWith('data:')) {
-                    try {
-                        imports.push(normalizeCssPath(new URL(importHref, url).pathname))
-                    } catch {}
+                const text = await res.text()
+                const imports = []
+                let match
+                while ((match = importRegex.exec(text)) !== null) {
+                    const importHref = match[1]
+                    if (importHref && !importHref.startsWith('data:')) {
+                        try {
+                            imports.push(normalizeCssPath(new URL(importHref, url).pathname))
+                        } catch {}
+                    }
                 }
+                return { stylesheetPath: url.pathname, imports: imports.filter(Boolean) }
+            } catch {
+                return null
             }
-            return {stylesheetPath: url.pathname, imports: imports.filter(Boolean)}
-        } catch {
-            return null
-        }
-    }))
+        })
+    )
 
     const validEntries = entries.filter(Boolean)
     const effectivePaths = new Set(updatePaths)
@@ -314,16 +325,20 @@ async function expandCssUpdatePaths(doc, updatePaths, origin) {
         }
     }
 
-    return {effectivePaths: [...effectivePaths], importPaths: [...importPaths]}
+    return { effectivePaths: [...effectivePaths], importPaths: [...importPaths] }
 }
 
 function extractUniqueCssPaths(updates) {
-    const paths = updates.filter(isCssUpdate).map((u) => stripQuery(u.path)).filter(Boolean)
+    const paths = updates
+        .filter(isCssUpdate)
+        .map((u) => stripQuery(u.path))
+        .filter(Boolean)
     return uniquePaths(paths)
 }
 
 function getEditorDocument() {
-    const iframe = document.querySelector('iframe[name="editor-canvas"]') ||
+    const iframe =
+        document.querySelector('iframe[name="editor-canvas"]') ||
         document.querySelector('.edit-post-visual-editor iframe') ||
         document.querySelector('.block-editor iframe')
     return iframe?.contentDocument || null
@@ -381,15 +396,17 @@ async function injectCssFallback(doc, updates, origin, batchTimestamp) {
     const paths = updates.map((u) => (typeof u === 'string' ? u : u?.path)).filter(Boolean)
     const timestamp = String(batchTimestamp || Date.now())
 
-    const contents = await Promise.all(paths.map(async (path) => {
-        try {
-            const url = buildUrl(path, origin, timestamp)
-            const res = await fetch(url.toString(), {cache: 'no-store'})
-            return res.ok ? await res.text() : ''
-        } catch {
-            return ''
-        }
-    }))
+    const contents = await Promise.all(
+        paths.map(async (path) => {
+            try {
+                const url = buildUrl(path, origin, timestamp)
+                const res = await fetch(url.toString(), { cache: 'no-store' })
+                return res.ok ? await res.text() : ''
+            } catch {
+                return ''
+            }
+        })
+    )
 
     const cssText = contents.filter(Boolean).join('\n')
     if (cssText) {
@@ -399,22 +416,24 @@ async function injectCssFallback(doc, updates, origin, batchTimestamp) {
 }
 
 async function inlineCssUpdates(doc, updatePaths, origin, timestampStr) {
-    await Promise.all(updatePaths.map(async (path) => {
-        try {
-            const url = buildUrl(path, origin, timestampStr)
-            const res = await fetch(url.toString(), {cache: 'no-store'})
-            if (!res.ok) return
-            const cssText = await res.text()
-            if (!cssText) return
+    await Promise.all(
+        updatePaths.map(async (path) => {
+            try {
+                const url = buildUrl(path, origin, timestampStr)
+                const res = await fetch(url.toString(), { cache: 'no-store' })
+                if (!res.ok) return
+                const cssText = await res.text()
+                if (!cssText) return
 
-            const raw = stripQuery(path)
-            const existing = doc.querySelector(`style[data-wpv-hmr-inline="${raw}"]`)
-            const style = existing || doc.createElement('style')
-            style.setAttribute('data-wpv-hmr-inline', raw)
-            style.textContent = cssText
-            if (!existing) doc.head?.appendChild(style)
-        } catch {}
-    }))
+                const raw = stripQuery(path)
+                const existing = doc.querySelector(`style[data-wpv-hmr-inline="${raw}"]`)
+                const style = existing || doc.createElement('style')
+                style.setAttribute('data-wpv-hmr-inline', raw)
+                style.textContent = cssText
+                if (!existing) doc.head?.appendChild(style)
+            } catch {}
+        })
+    )
 }
 
 function isCssUpdate(update) {
@@ -467,27 +486,36 @@ async function processCssHmrUpdates(doc, updatePaths, batchTimestamp) {
         return
     }
 
-    const {effectivePaths, importPaths} = await expandCssUpdatePaths(doc, uniquePathsList, origin)
+    const { effectivePaths, importPaths } = await expandCssUpdatePaths(doc, uniquePathsList, origin)
     const moduleUpdatePaths = uniquePaths([...uniquePathsList, ...importPaths])
 
     await applyCssModuleUpdates(doc, moduleUpdatePaths, origin, timestampStr)
     await inlineCssUpdates(doc, moduleUpdatePaths, origin, timestampStr)
 
-    const cssTracker = typeof window !== 'undefined'
-        ? (window.__wpvCssHmrTracker || (window.__wpvCssHmrTracker = {lastUpdate: 0}))
-        : {lastUpdate: 0}
-    if ((timestamp - cssTracker.lastUpdate) < __wpvHmrDebounceMs) {
+    const cssTracker =
+        typeof window !== 'undefined'
+            ? window.__wpvCssHmrTracker || (window.__wpvCssHmrTracker = { lastUpdate: 0 })
+            : { lastUpdate: 0 }
+    if (timestamp - cssTracker.lastUpdate < __wpvHmrDebounceMs) {
         __wpvHmrLogger.debug?.('[wp-vite] HMR: skipping duplicate CSS update')
         return
     }
     cssTracker.lastUpdate = timestamp
 
-    await refreshStylesheetLinks(doc, effectivePaths, moduleUpdatePaths, importPaths, origin, timestampStr, entryNormalized)
+    await refreshStylesheetLinks(
+        doc,
+        effectivePaths,
+        moduleUpdatePaths,
+        importPaths,
+        origin,
+        timestampStr,
+        entryNormalized
+    )
 }
 
 function processHmrUpdates(doc, updates) {
     const batchTimestamp = Date.now()
-    const {jsUpdates, cssUpdates} = categorizeUpdates(updates)
+    const { jsUpdates, cssUpdates } = categorizeUpdates(updates)
 
     if (jsUpdates.length > 0) {
         const jsPaths = uniquePaths(jsUpdates.map((u) => stripQuery(u.path)))
@@ -506,12 +534,12 @@ function processJsHmrUpdate(doc, path, batchTimestamp) {
 
     const timestamp = batchTimestamp || Date.now()
     if (typeof window !== 'undefined') {
-        window.__wpvCssIgnoreUntil = timestamp + (__wpvHmrDebounceMs * 2)
+        window.__wpvCssIgnoreUntil = timestamp + __wpvHmrDebounceMs * 2
     }
 
-    dispatchHmrEvent(doc, 'wp-block-hmr-update', {path, timestamp, source: 'vite-hmr'})
+    dispatchHmrEvent(doc, 'wp-block-hmr-update', { path, timestamp, source: 'vite-hmr' })
     if (typeof window !== 'undefined' && window !== doc.defaultView) {
-        dispatchHmrEvent(window, 'wp-block-hmr-update', {path, timestamp, source: 'vite-hmr'})
+        dispatchHmrEvent(window, 'wp-block-hmr-update', { path, timestamp, source: 'vite-hmr' })
     }
 
     applyBlockHmrFromPath(path, batchTimestamp)
@@ -532,7 +560,15 @@ function processJsUpdates(doc, jsUpdates) {
     __wpvHmrLogger.log(`Processed ${pathMap.size}/${jsUpdates.length} HMR updates (deduped)`)
 }
 
-async function refreshStylesheetLinks(doc, effectivePaths, updatePaths, importPaths, origin, timestampStr, entryNormalized) {
+async function refreshStylesheetLinks(
+    doc,
+    effectivePaths,
+    updatePaths,
+    importPaths,
+    origin,
+    timestampStr,
+    entryNormalized
+) {
     const normalizedEffectivePaths = effectivePaths.map(normalizeCssPath).filter(Boolean)
     const matchesUpdatePath = (href) => {
         const normalized = normalizeCssPath(stripQuery(href))
@@ -585,7 +621,12 @@ async function refreshStylesheetLinks(doc, effectivePaths, updatePaths, importPa
             await injectCssFallback(doc, fallbackUpdates, origin, parseInt(timestampStr, 10))
         }
     } else if (effectivePaths.length > 0) {
-        await injectCssFallback(doc, fallbackUpdates.length > 0 ? fallbackUpdates : effectivePaths, origin, parseInt(timestampStr, 10))
+        await injectCssFallback(
+            doc,
+            fallbackUpdates.length > 0 ? fallbackUpdates : effectivePaths,
+            origin,
+            parseInt(timestampStr, 10)
+        )
     }
 }
 

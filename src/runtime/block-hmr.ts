@@ -19,7 +19,9 @@ type WpBlocksApi = {
 
 type WpDataApi = {
     select: (store: string) => { getBlocks?: () => Array<{ name: string; clientId: string }> } | null
-    dispatch: (store: string) => { updateBlockAttributes?: (clientId: string, attrs: Record<string, unknown>) => void } | null
+    dispatch: (
+        store: string
+    ) => { updateBlockAttributes?: (clientId: string, attrs: Record<string, unknown>) => void } | null
 }
 
 type RecentApplyEntry = { edit: unknown; save: unknown; time: number }
@@ -77,7 +79,7 @@ function reRegisterBlock(
     current: BlockTypeRegistration,
     blockName: string,
     nextEdit: unknown,
-    nextSave: unknown,
+    nextSave: unknown
 ): boolean {
     const nextAttributes = {
         ...current.attributes,
@@ -86,8 +88,7 @@ function reRegisterBlock(
 
     try {
         blocks.unregisterBlockType(blockName)
-    } catch {
-    }
+    } catch {}
 
     if (blocks.getBlockType(blockName)) {
         return false
@@ -103,10 +104,7 @@ function reRegisterBlock(
     return true
 }
 
-export function applyBlockHmr(
-    block: BlockModule,
-    mod?: Partial<BlockModule> & Record<string, unknown>,
-): void {
+export function applyBlockHmr(block: BlockModule, mod?: Partial<BlockModule> & Record<string, unknown>): void {
     try {
         const apis = getWpApis()
         if (!apis) return

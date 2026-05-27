@@ -33,7 +33,13 @@
         "fixture:build": "bun run --cwd tests/fixtures/host-plugin build",
         "fixture:dev": "bun run --cwd tests/fixtures/host-plugin dev",
         "typecheck": "tsc --noEmit",
-        "prepublishOnly": "bun run build && bun run test && bun run typecheck"
+        "lint": "oxlint src tests tsup.config.ts playwright.config.ts",
+        "format": "oxfmt --write src tests tsup.config.ts playwright.config.ts package.json tsconfig.json .oxfmtrc.json",
+        "format:check": "oxfmt --check src tests tsup.config.ts playwright.config.ts package.json tsconfig.json .oxfmtrc.json",
+        "quality": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run test",
+        "check": "bun run quality",
+        "prepare": "simple-git-hooks || true",
+        "prepublishOnly": "bun run check"
     },
     "keywords": [
         "vite",
@@ -69,11 +75,17 @@
         "@types/node": "^22",
         "@wordpress/env": "^10.20.0",
         "jsdom": "^25",
+        "oxfmt": "^0.52.0",
+        "oxlint": "^1.67.0",
+        "simple-git-hooks": "^2.13.1",
         "tsup": "^8",
         "typescript": "^5.6",
         "vite": "^8"
     },
     "publishConfig": {
         "access": "public"
+    },
+    "simple-git-hooks": {
+        "pre-commit": "bun run quality"
     }
 }

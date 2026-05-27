@@ -58,15 +58,14 @@ function buildWindowMock(currentBlockType: Record<string, unknown> | null, block
     }
 
     const data = {
-        select: (store: string) =>
-            store === 'core/block-editor' ? { getBlocks: () => blocksInEditor } : null,
+        select: (store: string) => (store === 'core/block-editor' ? { getBlocks: () => blocksInEditor } : null),
         dispatch: (store: string) =>
             store === 'core/block-editor'
                 ? {
-                    updateBlockAttributes: (clientId: string, attrs: Record<string, unknown>) => {
-                        updates.push({ clientId, attrs })
-                    },
-                }
+                      updateBlockAttributes: (clientId: string, attrs: Record<string, unknown>) => {
+                          updates.push({ clientId, attrs })
+                      },
+                  }
                 : null,
     }
 
@@ -175,7 +174,9 @@ describe('applyBlockHmr', () => {
         expect(registered?.settings?.edit).toBe(nextEdit)
         expect(registered?.settings?.save).toBe(nextSave)
         expect((registered?.settings?.attributes as Record<string, { default?: string }>)?.foo?.default).toBe('a')
-        expect((registered?.settings?.attributes as Record<string, { type?: string }>)?.__hmrTimestamp?.type).toBe('number')
+        expect((registered?.settings?.attributes as Record<string, { type?: string }>)?.__hmrTimestamp?.type).toBe(
+            'number'
+        )
         expect(setup.updates.length).toBe(1)
     })
 })
@@ -212,7 +213,10 @@ describe('wp-block-hmr template utilities', () => {
     it('dispatches HMR events and applies block updates for edit changes', async () => {
         const sourceDom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
         const iframeDom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
-        const { processJsHmrUpdate } = loadHmrFunctions(sourceDom.window as unknown as Window, sourceDom.window.document)
+        const { processJsHmrUpdate } = loadHmrFunctions(
+            sourceDom.window as unknown as Window,
+            sourceDom.window.document
+        )
         const applyCalls: unknown[] = []
         const docEvents: string[] = []
         const windowEvents: string[] = []

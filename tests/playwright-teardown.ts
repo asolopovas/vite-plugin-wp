@@ -16,16 +16,24 @@ function stopViteProcess(): void {
     try {
         const pid = Number(fs.readFileSync(VITE_PID_FILE, 'utf-8').trim())
         if (pid && !Number.isNaN(pid)) {
-            try { process.kill(-pid, 'SIGTERM') } catch (e: any) {
+            try {
+                process.kill(-pid, 'SIGTERM')
+            } catch (e: any) {
                 if (e.code !== 'ESRCH') {
-                    try { process.kill(pid, 'SIGTERM') } catch {}
+                    try {
+                        process.kill(pid, 'SIGTERM')
+                    } catch {}
                 }
             }
         }
     } finally {
-        try { fs.unlinkSync(VITE_PID_FILE) } catch {}
+        try {
+            fs.unlinkSync(VITE_PID_FILE)
+        } catch {}
     }
-    try { fs.unlinkSync(HOT_FILE) } catch {}
+    try {
+        fs.unlinkSync(HOT_FILE)
+    } catch {}
 }
 
 function stopWpEnv(): void {

@@ -14,23 +14,26 @@ export function hmrFilterPlugin(baseDir: string): Plugin {
     const normalizedEditorCss = editorCssPath.replace(BACKSLASH_RE, '/')
 
     function filterOutEditorCssModules<T extends { id: string | null; file: string | null; type?: string }>(
-        modules: T[],
+        modules: T[]
     ): T[] {
         return modules.filter((mod) => {
             const modFile = (mod.file || mod.id || '').replace(BACKSLASH_RE, '/')
             const modUrl = ((mod as { url?: string }).url || '').replace(BACKSLASH_RE, '/')
             const isCss = modFile.endsWith('.css') || modUrl.endsWith('.css') || mod.type === 'css'
             if (!isCss) return true
-            const matchesEditorCss = [modFile, modUrl].some((value) =>
-                value.includes(normalizedEditorCss) || value.includes(EDITOR_CSS_URL)
+            const matchesEditorCss = [modFile, modUrl].some(
+                (value) => value.includes(normalizedEditorCss) || value.includes(EDITOR_CSS_URL)
             )
             return !matchesEditorCss
         })
     }
 
-    async function filterHotUpdateModules<T extends { id: string | null; file: string | null; type?: string }>(
-        ctx: { file: string; modules: T[]; read: () => string | Promise<string>; server: ViteDevServer },
-    ): Promise<T[] | void> {
+    async function filterHotUpdateModules<T extends { id: string | null; file: string | null; type?: string }>(ctx: {
+        file: string
+        modules: T[]
+        read: () => string | Promise<string>
+        server: ViteDevServer
+    }): Promise<T[] | void> {
         const cleanFile = ctx.file.split('?')[0]
 
         if (path.resolve(cleanFile) === editorCssPath) {
@@ -63,17 +66,16 @@ export function hmrFilterPlugin(baseDir: string): Plugin {
         name: 'vite-plugin-wp:hmr-filter',
         enforce: 'post',
         configureServer(server) {
-            void server.transformRequest(EDITOR_CSS_URL)
+            void server
+                .transformRequest(EDITOR_CSS_URL)
                 .then((result) => {
                     if (result?.code) {
                         cssOutputHashes.set(EDITOR_CSS_URL, generateContentHash(result.code))
                     }
                 })
-                .catch(() => { })
+                .catch(() => {})
         },
-        hotUpdate: (ctx: HotUpdateOptions): Promise<EnvironmentModuleNode[] | void> =>
-            filterHotUpdateModules(ctx),
-        handleHotUpdate: (ctx: HmrContext): Promise<ModuleNode[] | void> =>
-            filterHotUpdateModules(ctx),
+        hotUpdate: (ctx: HotUpdateOptions): Promise<EnvironmentModuleNode[] | void> => filterHotUpdateModules(ctx),
+        handleHotUpdate: (ctx: HmrContext): Promise<ModuleNode[] | void> => filterHotUpdateModules(ctx),
     }
 }

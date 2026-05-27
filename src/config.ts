@@ -23,8 +23,8 @@ function normalizeAliasEntries(
     alias: NonNullable<NonNullable<UserConfig['resolve']>['alias']> | undefined
 ): Array<{ find: string | RegExp; replacement: string }> {
     if (!alias) return []
-    if (Array.isArray(alias)) return alias
-    return Object.entries(alias).map(([find, replacement]) => ({ find, replacement }))
+    if (Array.isArray(alias)) return [...alias]
+    return Object.entries(alias as Record<string, string>).map(([find, replacement]) => ({ find, replacement }))
 }
 
 export function configureResolve(config: UserConfig, baseDir: string): void {

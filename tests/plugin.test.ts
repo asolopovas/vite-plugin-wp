@@ -5,9 +5,7 @@ import * as path from 'path'
 import type { ConfigEnv, Plugin, UserConfig, ViteDevServer } from 'vite'
 import vitePluginWp from '../src/index.js'
 
-type ObjectHook<T extends (...args: any[]) => any> =
-    | T
-    | { handler: T; order?: 'pre' | 'post' | null }
+type ObjectHook<T extends (...args: any[]) => any> = T | { handler: T; order?: 'pre' | 'post' | null }
 
 type TransformResult = { code: string; map: null } | undefined
 type SimpleTransformHook = (code: string, id: string) => TransformResult | Promise<TransformResult>
@@ -42,9 +40,7 @@ function runConfigureServerOn(plugin: Plugin, server: ViteDevServer): void {
 
 async function runTransformHook(plugins: Plugin[], code: string, id: string): Promise<TransformResult> {
     const plugin = getCorePlugin(plugins)
-    const handler = getHookHandler<SimpleTransformHook>(
-        plugin.transform as ObjectHook<SimpleTransformHook> | undefined
-    )
+    const handler = getHookHandler<SimpleTransformHook>(plugin.transform as ObjectHook<SimpleTransformHook> | undefined)
     return await handler?.(code, id)
 }
 
@@ -180,16 +176,52 @@ describe('vitePluginWp', () => {
 
         it('transforms imports correctly', async () => {
             const cases = [
-                { desc: 'WordPress destructuring', input: `import { registerBlockType } from '@wordpress/blocks';`, expected: 'const { registerBlockType } = wp.blocks;' },
-                { desc: 'WordPress default', input: `import blocks from '@wordpress/blocks';`, expected: 'const blocks = wp.blocks;' },
-                { desc: 'WordPress namespace', input: `import * as blocks from '@wordpress/blocks';`, expected: 'const blocks = wp.blocks;' },
+                {
+                    desc: 'WordPress destructuring',
+                    input: `import { registerBlockType } from '@wordpress/blocks';`,
+                    expected: 'const { registerBlockType } = wp.blocks;',
+                },
+                {
+                    desc: 'WordPress default',
+                    input: `import blocks from '@wordpress/blocks';`,
+                    expected: 'const blocks = wp.blocks;',
+                },
+                {
+                    desc: 'WordPress namespace',
+                    input: `import * as blocks from '@wordpress/blocks';`,
+                    expected: 'const blocks = wp.blocks;',
+                },
                 { desc: 'React default', input: `import React from 'react';`, expected: 'const React = wp.element;' },
-                { desc: 'React destructuring', input: `import { useState, useEffect } from 'react';`, expected: 'const { useState, useEffect } = wp.element;' },
-                { desc: 'React default + destructuring', input: `import React, { useState, useEffect } from 'react';`, expected: 'const React = wp.element;\nconst { useState, useEffect } = wp.element;' },
-                { desc: 'ReactDOM', input: `import ReactDOM from 'react-dom';`, expected: 'const ReactDOM = wp.element;' },
-                { desc: 'kebab-case conversion', input: `import { InnerBlocks } from '@wordpress/block-editor';`, expected: 'const { InnerBlocks } = wp.blockEditor;' },
-                { desc: 'aliases', input: `import { registerBlockType as register } from '@wordpress/blocks';`, expected: 'const { registerBlockType: register } = wp.blocks;' },
-                { desc: 'icons are bundled', input: `import { alignLeft } from '@wordpress/icons';`, expected: `import { alignLeft } from '@wordpress/icons';` },
+                {
+                    desc: 'React destructuring',
+                    input: `import { useState, useEffect } from 'react';`,
+                    expected: 'const { useState, useEffect } = wp.element;',
+                },
+                {
+                    desc: 'React default + destructuring',
+                    input: `import React, { useState, useEffect } from 'react';`,
+                    expected: 'const React = wp.element;\nconst { useState, useEffect } = wp.element;',
+                },
+                {
+                    desc: 'ReactDOM',
+                    input: `import ReactDOM from 'react-dom';`,
+                    expected: 'const ReactDOM = wp.element;',
+                },
+                {
+                    desc: 'kebab-case conversion',
+                    input: `import { InnerBlocks } from '@wordpress/block-editor';`,
+                    expected: 'const { InnerBlocks } = wp.blockEditor;',
+                },
+                {
+                    desc: 'aliases',
+                    input: `import { registerBlockType as register } from '@wordpress/blocks';`,
+                    expected: 'const { registerBlockType: register } = wp.blocks;',
+                },
+                {
+                    desc: 'icons are bundled',
+                    input: `import { alignLeft } from '@wordpress/icons';`,
+                    expected: `import { alignLeft } from '@wordpress/icons';`,
+                },
             ]
 
             for (const { desc, input, expected } of cases) {

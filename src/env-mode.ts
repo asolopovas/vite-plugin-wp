@@ -27,7 +27,10 @@ export function envModePlugin(envFile: string, baseDir: string): Plugin {
         apply: 'serve',
         configureServer(server) {
             setEnvViteMode('development')
-            const onSignal = () => { restore(); process.exit(0) }
+            const onSignal = () => {
+                restore()
+                process.exit(0)
+            }
             process.once('SIGINT', onSignal)
             process.once('SIGTERM', onSignal)
             process.once('SIGHUP', onSignal)

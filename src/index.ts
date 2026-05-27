@@ -24,9 +24,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
     const resolved = resolveOptions(options)
     const baseDir = process.cwd()
     const transformCache = new Map<string, string>()
-    const hmrLogger = resolved.debugHmr
-        ? 'console'
-        : '{ log: () => {}, warn: () => {}, debug: () => {} }'
+    const hmrLogger = resolved.debugHmr ? 'console' : '{ log: () => {}, warn: () => {}, debug: () => {} }'
 
     let isBuild = false
 
@@ -99,11 +97,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
         },
     }
 
-    const plugins: Plugin[] = [
-        corePlugin,
-        hotFilePlugin(resolved.hotFile, baseDir),
-        hmrFilterPlugin(baseDir),
-    ]
+    const plugins: Plugin[] = [corePlugin, hotFilePlugin(resolved.hotFile, baseDir), hmrFilterPlugin(baseDir)]
 
     if (resolved.syncViteMode) {
         plugins.push(envModePlugin(resolved.envFile, baseDir))
