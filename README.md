@@ -5,6 +5,10 @@
 
 Vite plugin for WordPress block and theme development. Replaces `@wordpress/*` imports with `wp.*` globals, shims `react`/`react-dom`/`lodash-es` to their WP-provided counterparts, and enables per-block HMR in the editor.
 
+## Repository docs
+
+This source repo is maintained with an agent-first workflow: `AGENTS.md` is the short map, while `docs/README.md` indexes architecture, commands, release flow, and agent workflow details. If implementation behavior changes, update the relevant doc in the same change.
+
 ## Requirements
 
 - Vite `>=8` / Node `>=20`
