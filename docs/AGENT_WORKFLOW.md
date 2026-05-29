@@ -16,7 +16,7 @@ Humans steer; agents execute. The repository is the source of truth.
 
 Put important knowledge in code, tests, scripts, fixtures, or markdown. Do not rely on chat history.
 
-Use checked-in plans only for work spanning sessions or subsystems. Put active plans in `docs/plans/active/` and completed plans in `docs/plans/completed/`.
+Use checked-in plans only for work spanning sessions or subsystems. Put active plans in `docs/exec-plans/active/` and completed plans in `docs/exec-plans/completed/`.
 
 ## Feedback loops
 

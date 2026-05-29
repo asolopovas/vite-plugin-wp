@@ -1,13 +1,13 @@
 # AGENTS Guide
 
-Humans steer; agents execute. Keep this file short; use `docs/` for detail.
+Humans steer; agents execute. Treat the repo as source of truth and keep this file as a map, not a manual.
 
 ## Hard constraints
 
-- Do not comment code unless explicitly requested.
-- Do not commit, publish, or release unless explicitly instructed.
+- Do not add code comments unless asked.
+- Do not commit, tag, push, publish, or release unless explicitly instructed.
 - Import from `react` only for hooks/types; avoid `import React`.
-- Never run `playwright install` or `bun x playwright install`.
+- Never run `playwright install` or `bun x playwright install`; if e2e needs `chromium_headless_shell-*`, stop and report it.
 - Never type WordPress credentials in a browser; use cached Playwright auth.
 
 ## Docs map
@@ -15,23 +15,22 @@ Humans steer; agents execute. Keep this file short; use `docs/` for detail.
 - `README.md` — public usage and options.
 - `docs/README.md` — docs index.
 - `docs/ARCHITECTURE.md` — structure and invariants.
-- `docs/COMMANDS.md` — commands, tests, browser workflow.
+- `docs/COMMANDS.md` — commands, tests, e2e, browser workflow.
 - `docs/RELEASE.md` — release flow and recovery.
 - `docs/AGENT_WORKFLOW.md` — agent workflow.
+- `docs/EXECUTION_PLANS.md` — checked-in plan template.
 
 ## Operating loop
 
-1. Read the relevant docs before editing.
-2. Inspect code and tests directly.
-3. Make focused changes.
-4. Validate narrowly, then broadly when needed.
-5. Update docs with behavior changes.
-6. Handoff with changes, validation, and unverified items.
+Inspect repo → plan → edit → validate → drive the app/browser when behavior changes → inspect logs/traces → self-review → hand off with results and gaps.
 
-## Style and validation
+Use `docs/exec-plans/active/` for complex or risky work; move completed plans to `docs/exec-plans/completed/`.
 
-- 4-space indent. Single quotes in TS.
-- Prefer string transforms in `src/transforms/` unless an AST is needed.
+## Defaults
+
+- Bun runtime/package manager; ESM-only.
+- 4-space indent, single quotes in TS, focused diffs.
+- Prefer string transforms in `src/transforms/`; avoid AST unless necessary.
 - Keep `src/runtime/block-hmr.ts` free of ambient WP types.
 - For `src/` changes, run `bun run test` and `bun run typecheck`.
-- For transform/HMR changes, run `bun run test:e2e:hmr` or a documented `playwright-cli` smoke.
+- For transform/HMR changes, add `bun run test:e2e:hmr` or a documented `playwright-cli` smoke.

@@ -1,8 +1,9 @@
 # Docs
 
-- `ARCHITECTURE.md` — structure, invariants, virtual modules.
-- `COMMANDS.md` — local commands, tests, browser workflow.
-- `RELEASE.md` — release rules and recovery.
-- `AGENT_WORKFLOW.md` — agent operating rules.
+- `ARCHITECTURE.md` — structure, invariants, virtual module.
+- `COMMANDS.md` — commands, tests, e2e, browser workflow.
+- `RELEASE.md` — release flow and recovery.
+- `AGENT_WORKFLOW.md` — operating loop and guardrails.
+- `EXECUTION_PLANS.md` — checked-in plan template.
 
-Update docs with behavior, command, fixture, or release changes. Prefer short accurate docs over stale detail.
+Keep docs short, current, and linked from `AGENTS.md` when agents need them.
