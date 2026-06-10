@@ -1,7 +1,7 @@
 import * as path from 'path'
 import type { EnvironmentModuleNode, HmrContext, HotUpdateOptions, ModuleNode, Plugin, ViteDevServer } from 'vite'
 import { JS_LIKE_EXTENSION } from './constants.js'
-import { generateContentHash } from './utils/hash.js'
+import { generateContentHash } from './utils.js'
 
 export function hmrFilterPlugin(baseDir: string, editorCss: string): Plugin {
     const EDITOR_CSS_URL = editorCss.startsWith('/') ? editorCss : `/${editorCss}`

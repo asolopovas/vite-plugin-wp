@@ -22,9 +22,10 @@ Small modules, string transforms, and mechanical checks are the main design cons
 
 | Area | Files |
 |---|---|
-| Entry/config | `src/index.ts`, `src/config.ts`, `src/options.ts`, `src/constants.ts` |
-| Dev bridge | `src/hot-file.ts`, `src/env-mode.ts`, `src/hmr-filter.ts` |
+| Entry/config | `src/index.ts`, `src/config.ts`, `src/constants.ts` |
+| Dev bridge | `src/dev-server.ts`, `src/hmr-filter.ts` |
 | Transforms | `src/transforms/` |
+| Shared helpers | `src/utils.ts` |
 | HMR runtime/templates | `src/runtime/block-hmr.ts`, `src/templates/` |
 | Shims | `src/shims/` |
 | Tests/fixtures | `tests/`, `tests/fixtures/host-plugin/` |

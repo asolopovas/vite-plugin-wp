@@ -7,18 +7,20 @@ import {
     configureDevServer,
     configureOptimizeDeps,
     configureResolve,
+    resolveOptions,
+    type WpPluginOptions,
 } from './config.js'
-import { envModePlugin } from './env-mode.js'
+import { envModePlugin, hotFilePlugin } from './dev-server.js'
 import { hmrFilterPlugin } from './hmr-filter.js'
-import { hotFilePlugin } from './hot-file.js'
-import { resolveOptions, type WpPluginOptions } from './options.js'
-import { addHmrCode, injectBlockHmrForBlocks } from './transforms/block-hmr.js'
-import { injectIndexDepsAccept } from './transforms/index-deps.js'
-import { transformReactImports } from './transforms/react-imports.js'
-import { rewriteWordpressImportsToGlobals, transformWordpressImports } from './transforms/wp-imports.js'
-import { generateContentHash } from './utils/hash.js'
+import { addHmrCode, injectBlockHmrForBlocks, injectIndexDepsAccept } from './transforms/block-hmr.js'
+import {
+    rewriteWordpressImportsToGlobals,
+    transformReactImports,
+    transformWordpressImports,
+} from './transforms/imports.js'
+import { generateContentHash } from './utils.js'
 
-export type { WpPluginOptions } from './options.js'
+export type { WpPluginOptions } from './config.js'
 
 export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
     const resolved = resolveOptions(options)
