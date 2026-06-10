@@ -5,4 +5,13 @@ if (!wpElement) {
 }
 
 export default wpElement
-export const { render, createPortal, findDOMNode, unmountComponentAtNode, flushSync } = wpElement
+export const {
+    render,
+    hydrate,
+    createPortal,
+    findDOMNode,
+    unmountComponentAtNode,
+    flushSync,
+    createRoot,
+    hydrateRoot,
+} = wpElement

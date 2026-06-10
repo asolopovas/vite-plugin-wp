@@ -105,7 +105,10 @@ describe('vitePluginWp', () => {
             expect(alias.find((e) => e.find === '@store')).toBeDefined()
             expect(alias.find((e) => e.find === '@blocks')).toBeDefined()
             expect(alias.find((e) => e.find instanceof RegExp && e.find.source === '^react$')).toBeDefined()
-            expect(alias.find((e) => e.find instanceof RegExp && e.find.source === '^react-dom$')).toBeDefined()
+            const reactDomAlias = alias.find(
+                (e) => e.find instanceof RegExp && e.find.test('react-dom') && e.find.test('react-dom/client')
+            )
+            expect(reactDomAlias).toBeDefined()
 
             const external = config.build?.rollupOptions?.external as Array<string | RegExp>
             expect(external).toContain('jquery')

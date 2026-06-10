@@ -36,7 +36,7 @@ export const RESOLVE_ALIASES: Array<{
     { find: '@icons', key: 'icons' },
     { find: '@lib', key: 'lib' },
     { find: /^react$/, key: 'react' },
-    { find: /^react-dom$/, key: 'reactDom' },
+    { find: /^react-dom(\/client)?$/, key: 'reactDom' },
     { find: 'react/jsx-runtime', key: 'reactJsxRuntime' },
     { find: /^lodash-es$/, key: 'lodash' },
     { find: /^lodash$/, key: 'lodash' },
