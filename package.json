@@ -38,7 +38,7 @@
         "format:check": "oxfmt --check src tests tsup.config.ts playwright.config.ts package.json tsconfig.json .oxfmtrc.json",
         "quality": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run test",
         "check": "bun run quality",
-        "prepare": "simple-git-hooks || true",
+        "prepare": "(simple-git-hooks || true) && tsup",
         "prepublishOnly": "bun run check"
     },
     "keywords": [
