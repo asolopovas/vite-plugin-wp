@@ -1,10 +1,15 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { Plugin } from 'vite'
+import { onProcessExit } from './utils/process-exit.js'
+
+// Tracks the latest server per env file so a Vite restart (which closes the
+// old server after the new one already set development mode) cannot flip
+// VITE_MODE back to production while the dev server is still running.
+const serverEpochs = new Map<string, number>()
 
 export function envModePlugin(envFile: string, baseDir: string): Plugin {
     const absoluteEnvFile = path.isAbsolute(envFile) ? envFile : path.resolve(baseDir, envFile)
-    let restored = false
 
     const setEnvViteMode = (mode: 'development' | 'production'): void => {
         if (!fs.existsSync(absoluteEnvFile)) return
@@ -16,27 +21,21 @@ export function envModePlugin(envFile: string, baseDir: string): Plugin {
         if (next !== contents) fs.writeFileSync(absoluteEnvFile, next, 'utf-8')
     }
 
-    const restore = () => {
-        if (restored) return
-        restored = true
-        setEnvViteMode('production')
-    }
+    const restore = () => setEnvViteMode('production')
 
     return {
         name: 'vite-plugin-wp:env-mode',
         apply: 'serve',
         configureServer(server) {
+            const epoch = (serverEpochs.get(absoluteEnvFile) ?? 0) + 1
+            serverEpochs.set(absoluteEnvFile, epoch)
+
             setEnvViteMode('development')
-            const onSignal = () => {
-                restore()
-                process.exit(0)
-            }
-            process.once('SIGINT', onSignal)
-            process.once('SIGTERM', onSignal)
-            process.once('SIGHUP', onSignal)
-            process.once('beforeExit', restore)
-            process.once('exit', restore)
-            server.httpServer?.once('close', restore)
+
+            server.httpServer?.once('close', () => {
+                if (serverEpochs.get(absoluteEnvFile) === epoch) restore()
+            })
+            onProcessExit(restore)
         },
     }
 }

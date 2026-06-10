@@ -2,6 +2,12 @@ import * as fs from 'fs'
 import * as path from 'path'
 import type { ConfigEnv, Plugin, UserConfig, ViteDevServer } from 'vite'
 import { DEFAULT_DEV_SERVER_HOST, DEFAULT_DEV_SERVER_PORT } from './constants.js'
+import { onProcessExit } from './utils/process-exit.js'
+
+// Tracks the latest server per hot-file path. Vite restarts close the old
+// server after the new one has already written the hot file; without this
+// guard the old server's close handler would delete the fresh hot file.
+const serverEpochs = new Map<string, number>()
 
 export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {
     const absoluteHotFile = path.isAbsolute(hotFile) ? hotFile : path.resolve(baseDir, hotFile)
@@ -22,6 +28,9 @@ export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {
             if (isBuild) cleanup()
         },
         configureServer(server: ViteDevServer) {
+            const epoch = (serverEpochs.get(absoluteHotFile) ?? 0) + 1
+            serverEpochs.set(absoluteHotFile, epoch)
+
             const distDir = path.dirname(absoluteHotFile)
             if (!fs.existsSync(distDir)) {
                 fs.mkdirSync(distDir, { recursive: true })
@@ -32,9 +41,10 @@ export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {
             const host = configHost === '0.0.0.0' || configHost === true ? 'localhost' : configHost
             fs.writeFileSync(absoluteHotFile, `http://${host}:${port}`)
 
-            server.httpServer?.on('close', cleanup)
-            process.on('SIGTERM', cleanup)
-            process.on('SIGINT', cleanup)
+            server.httpServer?.once('close', () => {
+                if (serverEpochs.get(absoluteHotFile) === epoch) cleanup()
+            })
+            onProcessExit(cleanup)
         },
     }
 }

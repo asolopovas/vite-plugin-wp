@@ -153,10 +153,10 @@ describe('vitePluginWp', () => {
             const testServer = {
                 ...mockServer,
                 httpServer: {
-                    on: (event: string, cb: () => void) => {
+                    on: () => {},
+                    once: (event: string, cb: () => void) => {
                         if (event === 'close') closeCb = cb
                     },
-                    once: () => {},
                 },
             } as unknown as ViteDevServer
 
@@ -165,6 +165,40 @@ describe('vitePluginWp', () => {
             expect(fs.existsSync(hotFile)).toBe(true)
             closeCb?.()
             expect(fs.existsSync(hotFile)).toBe(false)
+        })
+
+        it('keeps hot file when an old server closes after a restart', () => {
+            const hotPlugin = getPluginByName(plugins, 'vite-plugin-wp:hot-file')
+            const makeServer = (capture: (cb: () => void) => void) =>
+                ({
+                    ...mockServer,
+                    httpServer: {
+                        on: () => {},
+                        once: (event: string, cb: () => void) => {
+                            if (event === 'close') capture(cb)
+                        },
+                    },
+                }) as unknown as ViteDevServer
+
+            let oldClose: (() => void) | undefined
+            runConfigureServerOn(
+                hotPlugin,
+                makeServer((cb) => (oldClose = cb))
+            )
+
+            // Vite restart: a new plugin instance configures a new server,
+            // then the old server's close handler fires.
+            const restartedPlugins = vitePluginWp()
+            const newHotPlugin = getPluginByName(restartedPlugins, 'vite-plugin-wp:hot-file')
+            runConfigureServerOn(
+                newHotPlugin,
+                makeServer(() => {})
+            )
+
+            const hotFile = path.join(tempDir, 'static', 'build', 'hot')
+            expect(fs.existsSync(hotFile)).toBe(true)
+            oldClose?.()
+            expect(fs.existsSync(hotFile)).toBe(true)
         })
     })
 

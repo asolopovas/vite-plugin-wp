@@ -23,6 +23,9 @@ export type { WpPluginOptions } from './options.js'
 export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
     const resolved = resolveOptions(options)
     const baseDir = process.cwd()
+    // Keyed by id + content hash, so edits keep adding entries; bound it so
+    // long dev sessions don't accumulate every past version of every module.
+    const TRANSFORM_CACHE_MAX = 1000
     const transformCache = new Map<string, string>()
     const hmrLogger = resolved.debugHmr ? 'console' : '{ log: () => {}, warn: () => {}, debug: () => {} }'
 
@@ -73,6 +76,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 const cacheKey = `${id}:${generateContentHash(code)}`
                 const cached = transformCache.get(cacheKey)
                 if (cached) return { code: cached, map: null }
+                if (transformCache.size >= TRANSFORM_CACHE_MAX) transformCache.clear()
 
                 let result = code
 
