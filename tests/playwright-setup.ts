@@ -156,7 +156,7 @@ async function setupWpEnvAuth(): Promise<void> {
 
     fs.mkdirSync(path.dirname(WP_ENV_AUTH_PATH), { recursive: true })
 
-    const browser = await chromium.launch()
+    const browser = await chromium.launch({ channel: 'chrome' })
     const context = await browser.newContext({ ignoreHTTPSErrors: true })
     const page = await context.newPage()
 
@@ -243,7 +243,7 @@ async function verifyViteMode(expected: string): Promise<void> {
 }
 
 async function warmTestResourceCache(): Promise<void> {
-    const browser = await chromium.launch()
+    const browser = await chromium.launch({ channel: 'chrome' })
     const context = await browser.newContext({ storageState: WP_ENV_AUTH_PATH, ignoreHTTPSErrors: true })
     const page = await context.newPage()
     try {
