@@ -25,6 +25,7 @@ Humans steer; agents execute. Treat the repo as source of truth and keep this fi
 Only when explicitly told. Drive via make tasks; never hand-run bump/tag/publish. Details: `docs/RELEASE.md`.
 
 - `make release-patch|minor|major` — bump, commit, push `main`, then `make check` → tag → `npm publish` → `gh release`. Idempotent; re-run on failure, never delete tags.
+- Notes: `NOTES_FILE=path` (or `NOTES="..."`); default `--generate-notes`. Keep concise — what changed and why.
 - Precondition: `npm whoami` must succeed; else ask user to `! npm login` (never handle npm tokens). Pass 2FA as `OTP=<code>`.
 - Never bypass `make check` or `--no-verify`.
 

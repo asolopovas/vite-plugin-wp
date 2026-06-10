@@ -6,6 +6,7 @@ SHELL := /bin/bash
 
 PKG_VERSION := $(shell node -p "require('./package.json').version")
 TAG := v$(PKG_VERSION)
+RELEASE_NOTES_FILE := .release-notes.md
 
 help:
 	@echo "Targets:"
@@ -27,7 +28,8 @@ help:
 	@echo "  release-patch     bump patch, commit, then release"
 	@echo "  release-minor     bump minor, commit, then release"
 	@echo "  release-major     bump major, commit, then release"
-	@echo "  (each step is idempotent — safe to re-run; pass OTP=<code> for npm 2FA)"
+	@echo "  (idempotent — safe to re-run; OTP=<code> for npm 2FA)"
+	@echo "  (notes: NOTES_FILE=path or NOTES=\"...\"; default --generate-notes)"
 	@echo ""
 	@echo "Low-level:"
 	@echo "  bump LEVEL=patch  bump version in package.json (no tag, no commit)"
@@ -104,7 +106,17 @@ gh-release:
 	else \
 		highest=`git tag --list 'v*' | sort -V | tail -n1`; \
 		if [ "$$highest" = "$(TAG)" ]; then latest_flag="--latest"; else latest_flag="--latest=false"; fi; \
-		gh release create "$(TAG)" --title "$(TAG)" --generate-notes $$latest_flag; \
+		notes_file="$(NOTES_FILE)"; created=""; \
+		if [ -z "$$notes_file" ] && [ -n "$(NOTES)" ]; then \
+			notes_file="$(RELEASE_NOTES_FILE)"; created="$$notes_file"; \
+			printf '%s\n' "$(NOTES)" > "$$notes_file"; \
+		fi; \
+		if [ -n "$$notes_file" ]; then \
+			gh release create "$(TAG)" --title "$(TAG)" --notes-file "$$notes_file" $$latest_flag; \
+		else \
+			gh release create "$(TAG)" --title "$(TAG)" --generate-notes $$latest_flag; \
+		fi; \
+		[ -n "$$created" ] && rm -f "$$created" || true; \
 	fi
 
 release: check
