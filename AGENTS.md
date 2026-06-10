@@ -20,6 +20,14 @@ Humans steer; agents execute. Treat the repo as source of truth and keep this fi
 - `docs/AGENT_WORKFLOW.md` — agent workflow.
 - `docs/EXECUTION_PLANS.md` — checked-in plan template.
 
+## Release
+
+Only when explicitly told. Drive via make tasks; never hand-run bump/tag/publish. Details: `docs/RELEASE.md`.
+
+- `make release-patch|minor|major` — bump, commit, push `main`, then `make check` → tag → `npm publish` → `gh release`. Idempotent; re-run on failure, never delete tags.
+- Precondition: `npm whoami` must succeed; else ask user to `! npm login` (never handle npm tokens). Pass 2FA as `OTP=<code>`.
+- Never bypass `make check` or `--no-verify`.
+
 ## Operating loop
 
 Inspect repo → plan → edit → validate → drive the app/browser when behavior changes → inspect logs/traces → self-review → hand off with results and gaps.
