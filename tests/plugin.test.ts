@@ -283,7 +283,17 @@ describe('vitePluginWp', () => {
 
             expect(editorResult?.code).toContain('import.meta.hot')
             expect(editorResult?.code).toContain('vite:beforeUpdate')
+            expect(editorResult?.code).toContain('/src/styles/vite-blocks-editor.css')
+            expect(editorResult?.code).not.toContain('__WPV_HMR_ENTRY_CSS__')
             expect(utilResult?.code).not.toContain('import.meta.hot')
+        })
+
+        it('substitutes a custom editorCss option into the HMR entry template', async () => {
+            const custom = vitePluginWp({ editorCss: '/src/styles/custom-editor.css' })
+            const result = await runTransformHook(custom, `console.log('x');`, 'src/blocks/index.ts')
+
+            expect(result?.code).toContain('/src/styles/custom-editor.css')
+            expect(result?.code).not.toContain('__WPV_HMR_ENTRY_CSS__')
         })
 
         it('injects per-block HMR when edit/save are imported', async () => {

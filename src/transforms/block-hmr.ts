@@ -1,5 +1,7 @@
 import {
+    HMR_DEBOUNCE_PLACEHOLDER,
     HMR_DEP_ACCEPT_PLACEHOLDER,
+    HMR_ENTRY_CSS_PLACEHOLDER,
     HMR_EXPORT_LINE_PLACEHOLDER,
     HMR_LOGGER_PLACEHOLDER,
     JS_LIKE_EXTENSION,
@@ -130,10 +132,16 @@ export async function injectBlockHmrForBlocks(code: string, id: string, hmrLogge
 
 const loadHmrTemplate = createTemplateLoader(TEMPLATE_PATHS.hmr)
 
-export async function addHmrCode(code: string, hmrLogger: string, hmrDebounceMs: number): Promise<string> {
+export async function addHmrCode(
+    code: string,
+    hmrLogger: string,
+    hmrDebounceMs: number,
+    editorCss: string
+): Promise<string> {
     const template = await loadHmrTemplate()
     const hmrCode = template
         .replaceAll(HMR_LOGGER_PLACEHOLDER, hmrLogger)
-        .replaceAll('__WPV_HMR_DEBOUNCE_MS__', String(hmrDebounceMs))
+        .replaceAll(HMR_DEBOUNCE_PLACEHOLDER, String(hmrDebounceMs))
+        .replaceAll(HMR_ENTRY_CSS_PLACEHOLDER, editorCss)
     return hmrCode + '\n' + code
 }

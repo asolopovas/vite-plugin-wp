@@ -86,7 +86,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 const isEntry = isBlockIndexEntry(projectRelativeId(cleanId))
 
                 if (isEntry) {
-                    result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs)
+                    result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs, resolved.editorCss)
                 }
 
                 result = transformWordpressImports(result)
@@ -108,7 +108,11 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
         },
     }
 
-    const plugins: Plugin[] = [corePlugin, hotFilePlugin(resolved.hotFile, baseDir), hmrFilterPlugin(baseDir)]
+    const plugins: Plugin[] = [
+        corePlugin,
+        hotFilePlugin(resolved.hotFile, baseDir),
+        hmrFilterPlugin(baseDir, resolved.editorCss),
+    ]
 
     if (resolved.syncViteMode) {
         plugins.push(envModePlugin(resolved.envFile, baseDir))

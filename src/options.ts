@@ -9,6 +9,7 @@ export type WpPluginOptions = {
     syncViteMode?: boolean
     envFile?: string
     hotFile?: string
+    editorCss?: string
 }
 
 export type ResolvedWpPluginOptions = Required<Omit<WpPluginOptions, 'input' | 'base' | 'manifest'>> & {
@@ -26,6 +27,7 @@ const DEFAULTS = {
     syncViteMode: true,
     envFile: '.env',
     hotFile: 'static/build/hot',
+    editorCss: '/src/styles/vite-blocks-editor.css',
 }
 
 export function resolveOptions(options: WpPluginOptions = {}): ResolvedWpPluginOptions {
@@ -40,5 +42,6 @@ export function resolveOptions(options: WpPluginOptions = {}): ResolvedWpPluginO
         syncViteMode: options.syncViteMode ?? DEFAULTS.syncViteMode,
         envFile: options.envFile ?? DEFAULTS.envFile,
         hotFile: options.hotFile ?? DEFAULTS.hotFile,
+        editorCss: options.editorCss ?? DEFAULTS.editorCss,
     }
 }

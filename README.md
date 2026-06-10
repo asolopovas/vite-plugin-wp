@@ -66,6 +66,7 @@ Dev import rewrites happen in `transform`; build rewrites happen in `renderChunk
 | `envFile` | `string` | `.env` | Env sync target |
 | `syncViteMode` | `boolean` | `true` | Toggle `VITE_MODE` sync |
 | `hotFile` | `string` | `static/build/hot` | Dev-server URL file |
+| `editorCss` | `string` | `/src/styles/vite-blocks-editor.css` | Editor entry stylesheet handled by block HMR |
 
 ## Full config
 

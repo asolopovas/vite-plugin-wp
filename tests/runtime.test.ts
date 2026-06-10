@@ -27,10 +27,20 @@ type MockSetup = {
     registerCalls: RegisterCall[]
     unregisterCalls: string[]
 }
+type HmrUpdate = { type: string; path: string }
 type HmrFunctions = {
     processCssHmrUpdates: (doc: Document, updates: Array<{ path: string; type?: string } | string>) => Promise<void>
     processJsHmrUpdate: (doc: Document, path: string) => void
-    applyBlockHmrFromPath: (path: string) => void
+    applyBlockHmrFromPath: (path: string) => Promise<void> | void
+    setupRegisterGuard: () => void
+    removeDuplicateAndDeferredCssUpdates: (updates: HmrUpdate[], hasJsUpdate: boolean) => void
+    expandCssUpdatePaths: (
+        doc: Document,
+        updatePaths: string[],
+        origin: string
+    ) => Promise<{ effectivePaths: string[]; importPaths: string[] }>
+    buildUrl: (path: string, origin: string, timestampStr: string) => URL
+    updateUrlTimestamp: (href: string, origin: string, timestampStr: string) => string | null
 }
 
 let blockIndex = 0
@@ -97,13 +107,6 @@ function loadHmrFunctions(window: Window, document: Document): HmrFunctions {
         'function getViteOrigin() { return window.location.origin; }'
     )
 
-    utilities = utilities.replace(
-        /async function expandCssUpdatePaths\(doc, updatePaths, origin\)\s*\{[\s\S]*?\n\s*return \{ effectivePaths:[^}]+\}\s*\}/,
-        `async function expandCssUpdatePaths(doc, updatePaths, origin) {
-    return { effectivePaths: updatePaths, importPaths: [] };
-}`
-    )
-
     utilities = utilities.replace(/(\W)fetch\(/g, '$1window.fetch(')
 
     const factory = new Function(
@@ -114,7 +117,16 @@ function loadHmrFunctions(window: Window, document: Document): HmrFunctions {
         var __wpvHmrDebounceMs = 100;
         var __wpvHmrEntryStylesheet = '/src/styles/vite-blocks-editor.css';
         ${utilities}
-        return { processCssHmrUpdates, processJsHmrUpdate, applyBlockHmrFromPath };
+        return {
+            processCssHmrUpdates,
+            processJsHmrUpdate,
+            applyBlockHmrFromPath,
+            setupRegisterGuard,
+            removeDuplicateAndDeferredCssUpdates,
+            expandCssUpdatePaths,
+            buildUrl,
+            updateUrlTimestamp,
+        };
         `
     )
 
@@ -261,5 +273,160 @@ describe('wp-block-hmr template utilities', () => {
         await new Promise((resolve) => setTimeout(resolve, 0))
 
         expect(applyCalls.length).toBe(0)
+    })
+
+    it('falls back to the block index module when no meta mapping exists', async () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
+        const { applyBlockHmrFromPath } = loadHmrFunctions(dom.window as unknown as Window, dom.window.document)
+        const applyCalls: any[] = []
+        const loadedPaths: string[] = []
+        const mod = { meta: { name: 'test/block' }, edit: () => null, save: () => null }
+
+        ;(dom.window as any).__wpvBlockHmrApply = (block: unknown) => {
+            applyCalls.push(block)
+        }
+        ;(dom.window as any).__wpvBlockHmrLoader = (modulePath: string) => {
+            loadedPaths.push(modulePath)
+            return Promise.resolve(mod)
+        }
+
+        await applyBlockHmrFromPath('/src/blocks/Container/edit.tsx')
+
+        expect(loadedPaths.length).toBe(1)
+        expect(loadedPaths[0]).toContain('/src/blocks/Container/index?t=')
+        expect(applyCalls.length).toBe(1)
+        expect(applyCalls[0]?.meta?.name).toBe('test/block')
+    })
+})
+
+describe('setupRegisterGuard', () => {
+    it('makes registerBlockType return the existing registration', () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
+        const { setupRegisterGuard } = loadHmrFunctions(dom.window as unknown as Window, dom.window.document)
+        const registerCalls: string[] = []
+        const registry: Record<string, unknown> = {}
+
+        ;(dom.window as any).wp = {
+            blocks: {
+                registerBlockType: (name: string, settings: unknown) => {
+                    registerCalls.push(name)
+                    registry[name] = settings
+                    return settings
+                },
+                getBlockType: (name: string) => registry[name],
+            },
+        }
+
+        setupRegisterGuard()
+        const blocks = (dom.window as any).wp.blocks
+        expect(blocks.__wpvHmrRegisterGuard).toBe(true)
+
+        const first = blocks.registerBlockType('test/block', { title: 'first' })
+        const second = blocks.registerBlockType('test/block', { title: 'second' })
+
+        expect(registerCalls).toEqual(['test/block'])
+        expect(second).toBe(first)
+    })
+
+    it('does not wrap twice or run without the blocks API', () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
+        const { setupRegisterGuard } = loadHmrFunctions(dom.window as unknown as Window, dom.window.document)
+
+        expect(() => setupRegisterGuard()).not.toThrow()
+        ;(dom.window as any).wp = {
+            blocks: {
+                registerBlockType: () => null,
+                getBlockType: () => undefined,
+            },
+        }
+        setupRegisterGuard()
+        const wrapped = (dom.window as any).wp.blocks.registerBlockType
+        setupRegisterGuard()
+        expect((dom.window as any).wp.blocks.registerBlockType).toBe(wrapped)
+    })
+})
+
+describe('removeDuplicateAndDeferredCssUpdates', () => {
+    it('dedupes css updates, defers them to the queue, and drops the entry stylesheet during js updates', () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
+        const { removeDuplicateAndDeferredCssUpdates } = loadHmrFunctions(
+            dom.window as unknown as Window,
+            dom.window.document
+        )
+        const updates = [
+            { type: 'css-update', path: '/src/styles/a.css' },
+            { type: 'css-update', path: '/src/styles/a.css?t=1' },
+            { type: 'css-update', path: '/src/styles/vite-blocks-editor.css' },
+            { type: 'js-update', path: '/src/blocks/X/edit.tsx' },
+        ]
+
+        removeDuplicateAndDeferredCssUpdates(updates, true)
+
+        expect(updates).toEqual([{ type: 'js-update', path: '/src/blocks/X/edit.tsx' }])
+        const queued = (dom.window as any).__wpvQueuedCssUpdates
+        expect(queued.length).toBe(1)
+        expect(queued[0].path).toContain('/src/styles/a.css')
+    })
+
+    it('keeps the entry stylesheet queued when there is no js update', () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:5173/wp-admin/' })
+        const { removeDuplicateAndDeferredCssUpdates } = loadHmrFunctions(
+            dom.window as unknown as Window,
+            dom.window.document
+        )
+        const updates = [{ type: 'css-update', path: '/src/styles/vite-blocks-editor.css' }]
+
+        removeDuplicateAndDeferredCssUpdates(updates, false)
+
+        expect(updates).toEqual([])
+        expect((dom.window as any).__wpvQueuedCssUpdates.length).toBe(1)
+    })
+})
+
+describe('url helpers', () => {
+    it('builds vite asset urls with cache-busting params', () => {
+        const dom = new JSDOM('<!doctype html>', { url: 'http://localhost:8888/wp-admin/' })
+        const { buildUrl, updateUrlTimestamp } = loadHmrFunctions(dom.window as unknown as Window, dom.window.document)
+
+        const built = buildUrl('/src/styles/a.css', 'http://localhost:5173', '123')
+        expect(built.toString()).toBe('http://localhost:5173/src/styles/a.css?direct=&t=123')
+
+        const relative = buildUrl('src/styles/a.css', 'http://localhost:5173', '123')
+        expect(relative.pathname).toBe('/src/styles/a.css')
+
+        const updated = updateUrlTimestamp('http://localhost:5173/src/styles/a.css?direct=&t=1', '', '456')
+        expect(updated).toContain('t=456')
+        expect(updated).toContain('/src/styles/a.css')
+    })
+})
+
+describe('expandCssUpdatePaths', () => {
+    it('collects imports of updated stylesheets and pulls in parents that import an updated path', async () => {
+        const dom = new JSDOM(
+            '<!doctype html>' +
+                '<link rel="stylesheet" href="http://localhost:5173/src/styles/parent.css">' +
+                '<link rel="stylesheet" href="http://localhost:5173/src/styles/other.css">',
+            { url: 'http://localhost:5173/wp-admin/' }
+        )
+        const { expandCssUpdatePaths } = loadHmrFunctions(dom.window as unknown as Window, dom.window.document)
+        const stylesheets: Record<string, string> = {
+            '/src/styles/parent.css': '@import "./child.css";\nbody { color: red; }',
+            '/src/styles/other.css': '@import url(./leaf.css);',
+        }
+        ;(dom.window as any).fetch = async (url: string) => {
+            const body = stylesheets[new URL(url).pathname]
+            return { ok: body !== undefined, text: async () => body ?? '' }
+        }
+
+        const childUpdate = await expandCssUpdatePaths(dom.window.document, ['/src/styles/child.css'], '')
+        expect(childUpdate.effectivePaths).toContain('/src/styles/child.css')
+        expect(childUpdate.effectivePaths).toContain('/src/styles/parent.css')
+        expect(childUpdate.effectivePaths).not.toContain('/src/styles/other.css')
+
+        const parentUpdate = await expandCssUpdatePaths(dom.window.document, ['/src/styles/parent.css'], '')
+        expect(parentUpdate.importPaths).toEqual(['/src/styles/child.css'])
+
+        const otherUpdate = await expandCssUpdatePaths(dom.window.document, ['/src/styles/other.css'], '')
+        expect(otherUpdate.importPaths).toEqual(['/src/styles/leaf.css'])
     })
 })

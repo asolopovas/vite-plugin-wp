@@ -3,13 +3,11 @@ import type { EnvironmentModuleNode, HmrContext, HotUpdateOptions, ModuleNode, P
 import { JS_LIKE_EXTENSION } from './constants.js'
 import { generateContentHash } from './utils/hash.js'
 
-const EDITOR_CSS_REL = 'src/styles/vite-blocks-editor.css'
-const EDITOR_CSS_URL = '/src/styles/vite-blocks-editor.css'
-
-export function hmrFilterPlugin(baseDir: string): Plugin {
+export function hmrFilterPlugin(baseDir: string, editorCss: string): Plugin {
+    const EDITOR_CSS_URL = editorCss.startsWith('/') ? editorCss : `/${editorCss}`
     const cssContentHashes = new Map<string, string>()
     const cssOutputHashes = new Map<string, string>()
-    const editorCssPath = path.resolve(baseDir, EDITOR_CSS_REL)
+    const editorCssPath = path.resolve(baseDir, EDITOR_CSS_URL.slice(1))
     const BACKSLASH_RE = /\\/g
     const normalizedEditorCss = editorCssPath.replace(BACKSLASH_RE, '/')
 

@@ -1,6 +1,6 @@
 var __wpvHmrLogger = __wpvHmrLogger ?? __WPV_HMR_LOGGER__
 var __wpvHmrDebounceMs = __WPV_HMR_DEBOUNCE_MS__
-var __wpvHmrEntryStylesheet = '/src/styles/vite-blocks-editor.css'
+var __wpvHmrEntryStylesheet = '__WPV_HMR_ENTRY_CSS__'
 
 if (import.meta.hot) {
     __wpvHmrLogger.log('HMR enabled for WordPress block')
@@ -14,10 +14,9 @@ if (import.meta.hot) {
 
     import.meta.hot.on('vite:beforeUpdate', ({ updates }) => {
         storeLastUpdates(updates)
-        const { jsUpdates, cssUpdates } = categorizeUpdates(updates)
-        const hasJsUpdate = jsUpdates.length > 0
+        const { jsUpdates } = categorizeUpdates(updates)
 
-        removeDuplicateAndDeferredCssUpdates(updates, cssUpdates, hasJsUpdate)
+        removeDuplicateAndDeferredCssUpdates(updates, jsUpdates.length > 0)
         __wpvHmrLogger.log('HMR update detected:', updates.length, 'files')
 
         const editor = getEditorDocument()
@@ -117,42 +116,25 @@ function applyBlockHmrFromPath(path, batchTimestamp) {
     if (current && mappedMeta) {
         const promise = Promise.all([loadModule(), applyLoaderPromise]).then(([mod, applyBlockHmr]) => {
             if (typeof applyBlockHmr !== 'function') return
-            const nextEdit = componentType === 'edit' ? (mod?.default ?? mod?.edit ?? mod) : current.edit
-            const nextSave = componentType === 'save' ? (mod?.default ?? mod?.save ?? mod) : current.save
-            applyBlockHmr(
-                { meta: mappedMeta, edit: nextEdit, save: nextSave },
-                { meta: mappedMeta, edit: nextEdit, save: nextSave }
-            )
+            const next = {
+                meta: mappedMeta,
+                edit: componentType === 'edit' ? (mod?.default ?? mod?.edit ?? mod) : current.edit,
+                save: componentType === 'save' ? (mod?.default ?? mod?.save ?? mod) : current.save,
+            }
+            applyBlockHmr(next, next)
         })
         return trackPromise(promise)
     }
 
+    setupRegisterGuard()
     const indexPath = `/src/blocks/${blockDir}/index`
-    const loadIndexModule = () => loader(`${withOrigin(indexPath)}?t=${timestamp}`)
-    const getBlockType = wpBlocks?.getBlockType
-    const registerBlockType = wpBlocks?.registerBlockType
-
-    const guardedLoad =
-        getBlockType && registerBlockType
-            ? Promise.resolve().then(() => {
-                  let restored = false
-                  const descriptor = Object.getOwnPropertyDescriptor(wpBlocks, 'registerBlockType')
-                  if (!descriptor || descriptor.writable || descriptor.set || descriptor.configurable) {
-                      wpBlocks.registerBlockType = (name, settings) =>
-                          getBlockType(name) || registerBlockType(name, settings)
-                      restored = true
-                  }
-                  return loadIndexModule().finally(() => {
-                      if (restored) wpBlocks.registerBlockType = registerBlockType
-                  })
-              })
-            : loadIndexModule()
-
-    const promise = Promise.all([guardedLoad, applyLoaderPromise]).then(([mod, applyBlockHmr]) => {
-        if (mod?.meta && typeof applyBlockHmr === 'function') {
-            applyBlockHmr({ meta: mod.meta, edit: mod.edit, save: mod.save }, mod)
+    const promise = Promise.all([loader(`${withOrigin(indexPath)}?t=${timestamp}`), applyLoaderPromise]).then(
+        ([mod, applyBlockHmr]) => {
+            if (mod?.meta && typeof applyBlockHmr === 'function') {
+                applyBlockHmr({ meta: mod.meta, edit: mod.edit, save: mod.save }, mod)
+            }
         }
-    })
+    )
     return trackPromise(promise)
 }
 
@@ -263,7 +245,6 @@ async function expandCssUpdatePaths(doc, updatePaths, origin) {
     const links = getStylesheetLinks(doc)
     if (links.length === 0) return { effectivePaths: updatePaths, importPaths: [] }
 
-    const importRegex = /@import\s+(?:url\()?['"]?([^'")\s]+)['"]?\)?/g
     const resolvedOrigin = getResolvedOrigin(origin)
 
     const entries = await Promise.all(
@@ -277,6 +258,7 @@ async function expandCssUpdatePaths(doc, updatePaths, origin) {
                 if (!res.ok) return null
 
                 const text = await res.text()
+                const importRegex = /@import\s+(?:url\()?['"]?([^'")\s]+)['"]?\)?/g
                 const imports = []
                 let match
                 while ((match = importRegex.exec(text)) !== null) {
@@ -381,10 +363,10 @@ async function handleEntryStylesheetUpdate(doc, origin, timestampStr, entryNorma
         return
     }
 
-    await injectCssFallback(doc, [__wpvHmrEntryStylesheet], origin, parseInt(timestampStr, 10))
+    await injectCssFallback(doc, [__wpvHmrEntryStylesheet], origin, timestampStr)
 }
 
-async function injectCssFallback(doc, updates, origin, batchTimestamp) {
+async function injectCssFallback(doc, updates, origin, timestampStr) {
     const styleId = 'wpv-hmr-css-fallback'
     let style = doc.getElementById(styleId)
     if (!style) {
@@ -394,7 +376,7 @@ async function injectCssFallback(doc, updates, origin, batchTimestamp) {
     }
 
     const paths = updates.map((u) => (typeof u === 'string' ? u : u?.path)).filter(Boolean)
-    const timestamp = String(batchTimestamp || Date.now())
+    const timestamp = timestampStr || String(Date.now())
 
     const contents = await Promise.all(
         paths.map(async (path) => {
@@ -583,7 +565,7 @@ async function refreshStylesheetLinks(
 
     if (links.length === 0) {
         if (effectivePaths.length > 0) {
-            await injectCssFallback(doc, effectivePaths, origin, parseInt(timestampStr, 10))
+            await injectCssFallback(doc, effectivePaths, origin, timestampStr)
         }
         return
     }
@@ -618,14 +600,14 @@ async function refreshStylesheetLinks(
     if (refreshed > 0) {
         __wpvHmrLogger.debug?.('CSS refreshed in editor iframe', refreshed, updatePaths.length)
         if (fallbackUpdates.length > 0) {
-            await injectCssFallback(doc, fallbackUpdates, origin, parseInt(timestampStr, 10))
+            await injectCssFallback(doc, fallbackUpdates, origin, timestampStr)
         }
     } else if (effectivePaths.length > 0) {
         await injectCssFallback(
             doc,
             fallbackUpdates.length > 0 ? fallbackUpdates : effectivePaths,
             origin,
-            parseInt(timestampStr, 10)
+            timestampStr
         )
     }
 }
@@ -663,7 +645,7 @@ function refreshStyleImports(doc, updatePaths, origin, timestampStr) {
     return refreshed
 }
 
-function removeDuplicateAndDeferredCssUpdates(updates, cssUpdates, hasJsUpdate) {
+function removeDuplicateAndDeferredCssUpdates(updates, hasJsUpdate) {
     const seenCss = new Set()
     const queuedCssUpdates = []
     const entryNormalized = normalizeCssPath(__wpvHmrEntryStylesheet)
@@ -715,10 +697,7 @@ function uniquePaths(paths) {
 
 function updateUrlTimestamp(href, origin, timestampStr) {
     try {
-        const url = new URL(href, getResolvedOrigin(origin))
-        url.searchParams.set('direct', '')
-        if (timestampStr) url.searchParams.set('t', timestampStr)
-        return url.toString()
+        return buildUrl(href, origin, timestampStr).toString()
     } catch {
         return null
     }
