@@ -3,9 +3,6 @@ import * as path from 'path'
 import type { Plugin } from 'vite'
 import { onProcessExit } from './utils/process-exit.js'
 
-// Tracks the latest server per env file so a Vite restart (which closes the
-// old server after the new one already set development mode) cannot flip
-// VITE_MODE back to production while the dev server is still running.
 const serverEpochs = new Map<string, number>()
 
 export function envModePlugin(envFile: string, baseDir: string): Plugin {

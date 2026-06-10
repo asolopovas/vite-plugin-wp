@@ -1,4 +1,3 @@
-// React shim that uses WordPress element library
 const wpElement = window.wp?.element
 
 if (!wpElement) {
@@ -12,7 +11,6 @@ if (!wpElement) {
     throw new Error('WordPress element library not found. Make sure wp-element is enqueued.')
 }
 
-// WordPress element provides React-compatible exports
 export default wpElement
 export const {
     useState,
@@ -38,7 +36,6 @@ export const {
     StrictMode,
     Suspense,
     lazy,
-    // WordPress specific
     render,
     createPortal,
     findDOMNode,

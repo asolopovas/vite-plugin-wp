@@ -15,7 +15,6 @@ function extractRelativeImports(code: string): Set<string> {
     return deps
 }
 
-// Caller gates on entry detection; dev-only (build transforms return early).
 export function injectIndexDepsAccept(code: string, id: string, hmrLogger: string): string {
     if (code.includes('wpv-accept-deps')) return code
 

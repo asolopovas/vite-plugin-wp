@@ -23,18 +23,12 @@ export type { WpPluginOptions } from './options.js'
 export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
     const resolved = resolveOptions(options)
     const baseDir = process.cwd()
-    // Keyed by id + content hash, so edits keep adding entries; bound it so
-    // long dev sessions don't accumulate every past version of every module.
     const TRANSFORM_CACHE_MAX = 1000
     const transformCache = new Map<string, string>()
     const hmrLogger = resolved.debugHmr ? 'console' : '{ log: () => {}, warn: () => {}, debug: () => {} }'
 
     let isBuild = false
 
-    // Entry markers must match project-relative paths: an absolute id would
-    // also match when a parent directory name contains a marker (e.g. a
-    // project folder named "wp-vite-blocks"), injecting the HMR entry
-    // template into every module.
     const normalizedBase = baseDir.replace(/\\/g, '/')
     const projectRelativeId = (id: string): string => {
         const normalized = id.replace(/\\/g, '/')

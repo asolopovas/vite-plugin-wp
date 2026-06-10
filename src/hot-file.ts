@@ -4,9 +4,6 @@ import type { ConfigEnv, Plugin, UserConfig, ViteDevServer } from 'vite'
 import { DEFAULT_DEV_SERVER_HOST, DEFAULT_DEV_SERVER_PORT } from './constants.js'
 import { onProcessExit } from './utils/process-exit.js'
 
-// Tracks the latest server per hot-file path. Vite restarts close the old
-// server after the new one has already written the hot file; without this
-// guard the old server's close handler would delete the fresh hot file.
 const serverEpochs = new Map<string, number>()
 
 export function hotFilePlugin(hotFile: string, baseDir: string): Plugin {

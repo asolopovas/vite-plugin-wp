@@ -186,8 +186,6 @@ describe('vitePluginWp', () => {
                 makeServer((cb) => (oldClose = cb))
             )
 
-            // Vite restart: a new plugin instance configures a new server,
-            // then the old server's close handler fires.
             const restartedPlugins = vitePluginWp()
             const newHotPlugin = getPluginByName(restartedPlugins, 'vite-plugin-wp:hot-file')
             runConfigureServerOn(

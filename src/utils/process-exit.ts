@@ -12,12 +12,6 @@ function runAll(): void {
     callbacks.clear()
 }
 
-/**
- * Register a cleanup callback that runs once when the process exits or
- * receives a termination signal. Process listeners are installed a single
- * time no matter how many callbacks register (Vite server restarts create
- * new plugin instances, which would otherwise pile up listeners).
- */
 export function onProcessExit(callback: Callback): void {
     callbacks.add(callback)
     if (installed) return

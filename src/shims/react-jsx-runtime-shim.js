@@ -1,4 +1,3 @@
-// React JSX runtime shim that uses WordPress' bundled React runtime.
 const reactJsxRuntime = window.ReactJSXRuntime
 
 if (!reactJsxRuntime) {

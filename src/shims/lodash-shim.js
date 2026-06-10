@@ -1,5 +1,3 @@
-// Lodash shim to map lodash-es imports to WordPress underscore/lodash global
-// Use lazy evaluation to ensure globals are available when accessed
 const getLodash = () => {
     if (window.lodash) {
         return window.lodash
@@ -53,7 +51,6 @@ export const isString = (...args) => getLodash().isString(...args)
 export const isNumber = (...args) => getLodash().isNumber(...args)
 export const isFunction = (...args) => getLodash().isFunction(...args)
 
-// Export default as a proxy that gets lodash when accessed
 export default new Proxy(
     {},
     {
