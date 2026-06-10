@@ -8,18 +8,17 @@ import {
     DEFAULT_ADMIN_PASSWORD,
     DEFAULT_ADMIN_USER,
     getAuthStatePath,
-    getMetaDir,
-    resolvePluginRoot,
+    META_DIR,
+    PLUGIN_ROOT,
     resolveProjectRoot,
     resolveWpHost,
+    waitFor,
 } from './test-utils'
 
 const { isDevRun, isProdRun, viteMode } = resolvePlaywrightArgs()
 
-const PLUGIN_ROOT = resolvePluginRoot()
 const FIXTURE_ROOT = resolveProjectRoot()
 const WP_ENV_HOST = resolveWpHost()
-const META_DIR = getMetaDir()
 const WP_ENV_AUTH_PATH = getAuthStatePath()
 
 const PATHS = {
@@ -109,15 +108,6 @@ async function fetchStatus(url: string, timeoutMs = 2000): Promise<number> {
 async function fetchOk(url: string, timeoutMs = 2000): Promise<boolean> {
     const status = await fetchStatus(url, timeoutMs)
     return status >= 200 && status < 400
-}
-
-async function waitFor(check: () => Promise<boolean>, maxWaitMs: number, intervalMs = 500): Promise<boolean> {
-    const start = Date.now()
-    while (Date.now() - start < maxWaitMs) {
-        if (await check()) return true
-        await new Promise((r) => setTimeout(r, intervalMs))
-    }
-    return false
 }
 
 function ensurePluginBuilt(): void {

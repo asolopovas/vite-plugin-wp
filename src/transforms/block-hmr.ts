@@ -9,35 +9,33 @@ import { createTemplateLoader } from '../utils/templates.js'
 
 const loadInjectionTemplate = createTemplateLoader(TEMPLATE_PATHS.blockHmrInjection)
 
-const EDIT_SYMBOL_DECL_RE = /\bexport\s+const\s+edit\b|\bconst\s+edit\b/
-const EDIT_SYMBOL_DEFAULT_IMPORT_RE = /\bimport\s+edit\s+from\b/
-const EDIT_SYMBOL_NAMED_IMPORT_RE = /\bimport\s*{[^}]*\bedit\b[^}]*}\s+from\b/
-const SAVE_SYMBOL_DECL_RE = /\bexport\s+const\s+save\b|\bconst\s+save\b/
-const SAVE_SYMBOL_DEFAULT_IMPORT_RE = /\bimport\s+save\s+from\b/
-const SAVE_SYMBOL_NAMED_IMPORT_RE = /\bimport\s*{[^}]*\bsave\b[^}]*}\s+from\b/
-
-const EDIT_DEFAULT_SOURCE_RE = /import\s+edit\s+from\s+['"]([^'"]+)['"]/
-const EDIT_NAMED_SOURCE_RE = /import\s*{[^}]*\bedit\b[^}]*}\s+from\s+['"]([^'"]+)['"]/
-const SAVE_DEFAULT_SOURCE_RE = /import\s+save\s+from\s+['"]([^'"]+)['"]/
-const SAVE_NAMED_SOURCE_RE = /import\s*{[^}]*\bsave\b[^}]*}\s+from\s+['"]([^'"]+)['"]/
-
-const META_DECL_RE = /\bexport\s+const\s+meta\b|\bconst\s+meta\b/
-const BACKSLASH_RE = /\\/g
-
-function hasEditSymbol(code: string): boolean {
-    return (
-        EDIT_SYMBOL_DECL_RE.test(code) ||
-        EDIT_SYMBOL_DEFAULT_IMPORT_RE.test(code) ||
-        EDIT_SYMBOL_NAMED_IMPORT_RE.test(code)
-    )
+function symbolPatterns(name: string) {
+    return {
+        decl: new RegExp(`\\bexport\\s+const\\s+${name}\\b|\\bconst\\s+${name}\\b`),
+        defaultImport: new RegExp(`\\bimport\\s+${name}\\s+from\\b`),
+        namedImport: new RegExp(`\\bimport\\s*{[^}]*\\b${name}\\b[^}]*}\\s+from\\b`),
+        defaultSource: new RegExp(`import\\s+${name}\\s+from\\s+['"]([^'"]+)['"]`),
+        namedSource: new RegExp(`import\\s*{[^}]*\\b${name}\\b[^}]*}\\s+from\\s+['"]([^'"]+)['"]`),
+        exportedDecl: new RegExp(`\\bexport\\s+(?:const|function|class)\\s+${name}\\b`),
+        exportedList: new RegExp(`\\bexport\\s*{\\s*[^}]*\\b${name}\\b[^}]*}\\s*;?`),
+    }
 }
 
-function hasSaveSymbol(code: string): boolean {
-    return (
-        SAVE_SYMBOL_DECL_RE.test(code) ||
-        SAVE_SYMBOL_DEFAULT_IMPORT_RE.test(code) ||
-        SAVE_SYMBOL_NAMED_IMPORT_RE.test(code)
-    )
+type SymbolPatterns = ReturnType<typeof symbolPatterns>
+
+const META = symbolPatterns('meta')
+const EDIT = symbolPatterns('edit')
+const SAVE = symbolPatterns('save')
+const SYMBOLS: Array<[string, SymbolPatterns]> = [
+    ['meta', META],
+    ['edit', EDIT],
+    ['save', SAVE],
+]
+
+const BACKSLASH_RE = /\\/g
+
+function hasSymbol(patterns: SymbolPatterns, code: string): boolean {
+    return patterns.decl.test(code) || patterns.defaultImport.test(code) || patterns.namedImport.test(code)
 }
 
 function isInternalImport(spec: string): boolean {
@@ -45,17 +43,11 @@ function isInternalImport(spec: string): boolean {
     return spec.startsWith('.') || spec.startsWith('@') || spec.startsWith('/')
 }
 
-function findImportSource(code: string, defaultRe: RegExp, namedRe: RegExp): string | null {
-    const defaultMatch = code.match(defaultRe)
-    if (defaultMatch?.[1] && isInternalImport(defaultMatch[1])) {
-        return defaultMatch[1]
+function findImportSource(code: string, patterns: SymbolPatterns): string | null {
+    for (const re of [patterns.defaultSource, patterns.namedSource]) {
+        const match = code.match(re)
+        if (match?.[1] && isInternalImport(match[1])) return match[1]
     }
-
-    const namedMatch = code.match(namedRe)
-    if (namedMatch?.[1] && isInternalImport(namedMatch[1])) {
-        return namedMatch[1]
-    }
-
     return null
 }
 
@@ -71,9 +63,9 @@ function shouldInjectBlockHmr(code: string, id: string): boolean {
 
     if (code.includes('__wpvApplyBlockHmr') || code.includes('__wpvSetupBlockHmr')) return false
 
-    if (!META_DECL_RE.test(code)) return false
-    if (!hasEditSymbol(code)) return false
-    if (!hasSaveSymbol(code)) return false
+    if (!META.decl.test(code)) return false
+    if (!hasSymbol(EDIT, code)) return false
+    if (!hasSymbol(SAVE, code)) return false
 
     return true
 }
@@ -110,19 +102,10 @@ function generateDependencyAcceptCode(editImport: string | null, saveImport: str
 `
 }
 
-const EXPORTED_META_DECL_RE = /\bexport\s+(?:const|function|class)\s+meta\b/
-const EXPORTED_META_LIST_RE = /\bexport\s*{\s*[^}]*\bmeta\b[^}]*}\s*;?/
-const EXPORTED_EDIT_DECL_RE = /\bexport\s+(?:const|function|class)\s+edit\b/
-const EXPORTED_EDIT_LIST_RE = /\bexport\s*{\s*[^}]*\bedit\b[^}]*}\s*;?/
-const EXPORTED_SAVE_DECL_RE = /\bexport\s+(?:const|function|class)\s+save\b/
-const EXPORTED_SAVE_LIST_RE = /\bexport\s*{\s*[^}]*\bsave\b[^}]*}\s*;?/
-
 function generateMissingExports(code: string): string {
-    const exportList: string[] = []
-
-    if (!EXPORTED_META_DECL_RE.test(code) && !EXPORTED_META_LIST_RE.test(code)) exportList.push('meta')
-    if (!EXPORTED_EDIT_DECL_RE.test(code) && !EXPORTED_EDIT_LIST_RE.test(code)) exportList.push('edit')
-    if (!EXPORTED_SAVE_DECL_RE.test(code) && !EXPORTED_SAVE_LIST_RE.test(code)) exportList.push('save')
+    const exportList = SYMBOLS.filter(
+        ([, patterns]) => !patterns.exportedDecl.test(code) && !patterns.exportedList.test(code)
+    ).map(([name]) => name)
 
     return exportList.length > 0 ? `export { ${exportList.join(', ')} }\n` : ''
 }
@@ -130,8 +113,8 @@ function generateMissingExports(code: string): string {
 export async function injectBlockHmrForBlocks(code: string, id: string, hmrLogger: string): Promise<string> {
     if (!shouldInjectBlockHmr(code, id)) return code
 
-    const editImport = findImportSource(code, EDIT_DEFAULT_SOURCE_RE, EDIT_NAMED_SOURCE_RE)
-    const saveImport = findImportSource(code, SAVE_DEFAULT_SOURCE_RE, SAVE_NAMED_SOURCE_RE)
+    const editImport = findImportSource(code, EDIT)
+    const saveImport = findImportSource(code, SAVE)
     const depAcceptCode = generateDependencyAcceptCode(editImport, saveImport)
     const exportLine = generateMissingExports(code)
 

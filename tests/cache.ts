@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
-export const DEFAULT_CACHE_DIR = 'tests/.meta'
-export const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const DEFAULT_CACHE_DIR = 'tests/.meta'
+const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 export type CacheData<T> = T & { createdAt: number }
 

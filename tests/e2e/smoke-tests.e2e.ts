@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test'
-import { resolveWpHost, bootEditor, createAuthPage, createJsErrorCollector } from '../test-utils'
+import { resolveWpHost, bootEditor, createAuthPage, createJsErrorCollector, getAssetUrls } from '../test-utils'
 
 base.describe('Asset Loading @prod', () => {
     base.describe.configure({ mode: 'parallel' })
@@ -18,8 +18,7 @@ base.describe('Asset Loading @prod', () => {
 
         await bootEditor(page, wpHost)
 
-        const scriptSrcs = await page.$$eval('script[src]', (els) => els.map((el) => el.getAttribute('src')))
-        const linkHrefs = await page.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
+        const { scriptSrcs, linkHrefs } = await getAssetUrls(page)
         const hasDevAssets = [...scriptSrcs, ...linkHrefs].some((s) => s?.includes('localhost:517'))
 
         expect(hasDevAssets).toBe(false)
@@ -48,7 +47,7 @@ base.describe('Asset Loading @prod', () => {
 
         await page.goto(wpHost, { waitUntil: 'domcontentloaded' })
 
-        const frontendLinkHrefs = await page.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
+        const { linkHrefs: frontendLinkHrefs } = await getAssetUrls(page)
         const frontendHasDevAssets = frontendLinkHrefs.some((h) => h?.includes('localhost:517'))
 
         expect(frontendHasDevAssets).toBe(false)

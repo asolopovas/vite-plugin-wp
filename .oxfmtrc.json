@@ -5,5 +5,5 @@
     "trailingComma": "es5",
     "printWidth": 120,
     "sortPackageJson": false,
-    "ignorePatterns": []
+    "ignorePatterns": ["tests/.meta/**"]
 }

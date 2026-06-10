@@ -29,8 +29,6 @@ type MockSetup = {
 }
 type HmrFunctions = {
     processCssHmrUpdates: (doc: Document, updates: Array<{ path: string; type?: string } | string>) => Promise<void>
-    processHmrUpdates: (doc: Document, updates: Array<{ path: string; type: string }>) => void
-    injectCssFallback: (doc: Document, updates: Array<{ path: string } | string>, origin: string) => void
     processJsHmrUpdate: (doc: Document, path: string) => void
     applyBlockHmrFromPath: (path: string) => void
 }
@@ -116,7 +114,7 @@ function loadHmrFunctions(window: Window, document: Document): HmrFunctions {
         var __wpvHmrDebounceMs = 100;
         var __wpvHmrEntryStylesheet = '/src/styles/vite-blocks-editor.css';
         ${utilities}
-        return { processCssHmrUpdates, processHmrUpdates, injectCssFallback, processJsHmrUpdate, applyBlockHmrFromPath };
+        return { processCssHmrUpdates, processJsHmrUpdate, applyBlockHmrFromPath };
         `
     )
 

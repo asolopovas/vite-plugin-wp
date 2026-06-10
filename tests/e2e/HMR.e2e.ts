@@ -4,11 +4,13 @@ import path from 'path'
 import {
     test,
     expect,
+    getAssetUrls,
     insertTestBlock,
     modifySourceFile,
     bootEditor,
     createCanvasLike,
     resolveProjectRoot,
+    waitFor,
 } from '../test-utils'
 
 const PROJECT_ROOT = resolveProjectRoot()
@@ -74,8 +76,7 @@ test.describe('HMR @dev @hmr', () => {
         const inserted = await insertTestBlock(hmrPage, canvas)
         expect(inserted).toBe(true)
 
-        const scriptSrcs = await hmrPage.$$eval('script[src]', (els) => els.map((el) => el.getAttribute('src')))
-        const linkHrefs = await hmrPage.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
+        const { scriptSrcs, linkHrefs } = await getAssetUrls(hmrPage)
         const hasDevAssets = [...scriptSrcs, ...linkHrefs].some((src) => src?.includes(HMR_HOST))
         expect(hasDevAssets).toBe(true)
 
@@ -99,11 +100,7 @@ test.describe('HMR @dev @hmr', () => {
             }, expected)
         }
         const waitForColor = async (expected: string) => {
-            const start = Date.now()
-            while (Date.now() - start < HMR_TIMEOUT) {
-                if (await isExpectedColor(expected)) return
-                await hmrPage.waitForTimeout(100)
-            }
+            if (await waitFor(() => isExpectedColor(expected), HMR_TIMEOUT, 100)) return
 
             const debug = await hmrPage.evaluate(() => {
                 const updates = (window as any).__wpvLastHmrUpdates || []
@@ -130,14 +127,8 @@ test.describe('HMR @dev @hmr', () => {
             )
         }
         const parentStylesheetRequestsCount = () => hmrRequests.filter((url) => url.includes(HMR_STYLESHEET)).length
-        const waitForParentStylesheetRequest = async (beforeCount: number) => {
-            const start = Date.now()
-            while (Date.now() - start < HMR_TIMEOUT) {
-                if (parentStylesheetRequestsCount() > beforeCount) return true
-                await hmrPage.waitForTimeout(100)
-            }
-            return false
-        }
+        const waitForParentStylesheetRequest = (beforeCount: number) =>
+            waitFor(async () => parentStylesheetRequestsCount() > beforeCount, HMR_TIMEOUT, 100)
         const applyColor = async (color: string) => {
             const beforeParentRequests = parentStylesheetRequestsCount()
             const writeCss = () => {

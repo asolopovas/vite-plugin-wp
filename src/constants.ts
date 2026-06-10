@@ -67,13 +67,6 @@ export const DEFAULT_DEV_SERVER_PORT = 5173
 export const WORDPRESS_BUNDLED_PACKAGES = new Set(['icons'])
 export const WORDPRESS_EXTERNAL_REGEX = /^@wordpress\/(?!icons$)/
 
-export const ROLLUP_GLOBALS_MAP: Record<string, string> = {
-    react: 'React',
-    'react-dom': 'ReactDOM',
-    jquery: 'jQuery',
-    moment: 'moment',
-}
-
 export const ROLLUP_EXTERNAL_DEFAULT = [WORDPRESS_EXTERNAL_REGEX, 'jquery', 'moment']
 
 export const BLOCK_INDEX_MARKERS = ['blocks/index', 'editor', 'vite-blocks']

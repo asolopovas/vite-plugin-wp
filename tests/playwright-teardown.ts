@@ -2,11 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import { resolvePlaywrightArgs } from './playwright-args'
-import { getMetaDir, resolvePluginRoot, resolveProjectRoot } from './test-utils'
+import { META_DIR, PLUGIN_ROOT, resolveProjectRoot } from './test-utils'
 
-const PLUGIN_ROOT = resolvePluginRoot()
 const FIXTURE_ROOT = resolveProjectRoot()
-const META_DIR = getMetaDir()
 
 const VITE_PID_FILE = path.join(META_DIR, 'vite.pid')
 const HOT_FILE = path.join(FIXTURE_ROOT, 'static/build/hot')

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const PLUGIN_ROOT = path.resolve(__dirname, '..')
+export const PLUGIN_ROOT = path.resolve(__dirname, '..')
+export const META_DIR = path.join(PLUGIN_ROOT, 'tests/.meta')
 const FIXTURE_ROOT = path.join(PLUGIN_ROOT, 'tests/fixtures/host-plugin')
 
 export const DEFAULT_WP_HOST = 'http://localhost:8888'
@@ -52,18 +53,27 @@ export function resolveProjectRoot(): string {
     return path.resolve(process.env.WP_PROJECT_ROOT ?? FIXTURE_ROOT)
 }
 
-export function resolvePluginRoot(): string {
-    return PLUGIN_ROOT
-}
-
 export function getAuthStatePath(): string {
     const explicit = process.env.WP_TEST_AUTH_PATH
     if (explicit) return path.resolve(explicit)
-    return path.join(PLUGIN_ROOT, 'tests/.meta/wp-env-user.json')
+    return path.join(META_DIR, 'wp-env-user.json')
 }
 
-export function getMetaDir(): string {
-    return path.join(PLUGIN_ROOT, 'tests/.meta')
+export async function waitFor(check: () => Promise<boolean>, maxWaitMs: number, intervalMs = 500): Promise<boolean> {
+    const start = Date.now()
+    while (Date.now() - start < maxWaitMs) {
+        if (await check()) return true
+        await new Promise((r) => setTimeout(r, intervalMs))
+    }
+    return false
+}
+
+export async function getAssetUrls(
+    page: Page
+): Promise<{ scriptSrcs: (string | null)[]; linkHrefs: (string | null)[] }> {
+    const scriptSrcs = await page.$$eval('script[src]', (els) => els.map((el) => el.getAttribute('src')))
+    const linkHrefs = await page.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
+    return { scriptSrcs, linkHrefs }
 }
 
 export async function hasEditorCanvasIframe(page: Page): Promise<boolean> {
@@ -170,8 +180,7 @@ export const test = base.extend<TestFixtures>({
     },
 
     assetInfo: async ({ editorPage }, use) => {
-        const scriptSrcs = await editorPage.$$eval('script[src]', (els) => els.map((el) => el.getAttribute('src')))
-        const linkHrefs = await editorPage.$$eval('link[href]', (els) => els.map((el) => el.getAttribute('href')))
+        const { scriptSrcs, linkHrefs } = await getAssetUrls(editorPage)
         const vitePort = process.env.VITE_PORT ?? '5173'
         const hasDevAssets = [...scriptSrcs, ...linkHrefs].some((s) => s?.includes(`localhost:${vitePort}`))
         await use({ scriptSrcs, linkHrefs, hasDevAssets })
