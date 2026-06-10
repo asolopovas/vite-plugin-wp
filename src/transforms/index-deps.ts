@@ -1,5 +1,4 @@
 import * as path from 'path'
-import { isBlockIndexEntry } from '../constants.js'
 
 function extractRelativeImports(code: string): Set<string> {
     const importRegex = /import\s+(?:[^'"\n]+\s+from\s+)?['"](\.[^'"\n]+)['"];?/g
@@ -16,9 +15,8 @@ function extractRelativeImports(code: string): Set<string> {
     return deps
 }
 
-export function injectIndexDepsAccept(code: string, id: string, hmrLogger: string, isBuild: boolean): string {
-    if (isBuild) return code
-    if (!isBlockIndexEntry(id)) return code
+// Caller gates on entry detection; dev-only (build transforms return early).
+export function injectIndexDepsAccept(code: string, id: string, hmrLogger: string): string {
     if (code.includes('wpv-accept-deps')) return code
 
     const deps = extractRelativeImports(code)

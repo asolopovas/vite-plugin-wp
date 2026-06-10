@@ -265,6 +265,19 @@ describe('vitePluginWp', () => {
             }
         })
 
+        it('does not treat every module as an entry when the project dir name matches a marker', async () => {
+            const projectDir = path.join(tempDir, 'wp-vite-blocks')
+            fs.mkdirSync(projectDir, { recursive: true })
+            process.chdir(projectDir)
+            const localPlugins = vitePluginWp()
+
+            const code = `console.log('plain module');`
+            const absoluteId = path.join(projectDir, 'src/components/util.ts')
+            const result = await runTransformHook(localPlugins, code, absoluteId)
+
+            expect(result?.code ?? code).not.toContain('import.meta.hot')
+        })
+
         it('injects HMR for editor entry files', async () => {
             const code = `console.log('test');`
             const editorResult = await runTransformHook(plugins, code, 'src/blocks/index.ts')

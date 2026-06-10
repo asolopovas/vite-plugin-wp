@@ -31,6 +31,16 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
 
     let isBuild = false
 
+    // Entry markers must match project-relative paths: an absolute id would
+    // also match when a parent directory name contains a marker (e.g. a
+    // project folder named "wp-vite-blocks"), injecting the HMR entry
+    // template into every module.
+    const normalizedBase = baseDir.replace(/\\/g, '/')
+    const projectRelativeId = (id: string): string => {
+        const normalized = id.replace(/\\/g, '/')
+        return normalized.startsWith(normalizedBase) ? normalized.slice(normalizedBase.length) : normalized
+    }
+
     const VIRTUAL_BLOCK_HMR = 'virtual:vite-plugin-wp/block-hmr'
     const RESOLVED_BLOCK_HMR = '\0' + VIRTUAL_BLOCK_HMR
     const VIRTUAL_BLOCK_HMR_RE = /^virtual:vite-plugin-wp\/block-hmr$/
@@ -79,15 +89,18 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 if (transformCache.size >= TRANSFORM_CACHE_MAX) transformCache.clear()
 
                 let result = code
+                const isEntry = isBlockIndexEntry(projectRelativeId(cleanId))
 
-                if (isBlockIndexEntry(cleanId)) {
+                if (isEntry) {
                     result = await addHmrCode(result, hmrLogger, resolved.hmrDebounceMs)
                 }
 
                 result = transformWordpressImports(result)
                 result = transformReactImports(result)
                 result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
-                result = injectIndexDepsAccept(result, cleanId, hmrLogger, isBuild)
+                if (isEntry) {
+                    result = injectIndexDepsAccept(result, cleanId, hmrLogger)
+                }
 
                 transformCache.set(cacheKey, result)
                 return { code: result, map: null }
