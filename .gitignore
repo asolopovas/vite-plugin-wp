@@ -13,3 +13,4 @@ tests/fixtures/host-plugin/node_modules
 graphify-out/
 .release-notes.md
 .env
+.npmrc

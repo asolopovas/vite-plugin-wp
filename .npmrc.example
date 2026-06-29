@@ -1,0 +1,4 @@
+; Copy to .npmrc (gitignored) and paste a real token after the =.
+; Use an npm Automation or Granular token — a "Publish" token still
+; prompts for 2FA when the account is in auth-and-writes mode.
+//registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN_HERE
