@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .PHONY: help install build dev test test-unit typecheck lint format format-check quality check clean \
         release release-patch release-minor release-major _release patch minor major \
-        bump tag publish commit-release gh-release deploy
+        bump tag publish auth commit-release gh-release deploy
 
 PKG_VERSION := $(shell node -p "require('./package.json').version")
 TAG := v$(PKG_VERSION)
@@ -99,9 +99,18 @@ tag:
 publish:
 	@if npm view "@asolopovas/vite-plugin-wp@$(PKG_VERSION)" version >/dev/null 2>&1; then \
 		echo "$(PKG_VERSION) already published to npm; skipping"; \
+	elif ! grep -qs '_authToken=.\+' .npmrc || grep -qs 'YOUR_NPM_TOKEN_HERE' .npmrc; then \
+		if [ -z "$(OTP)" ]; then echo "publish: add a real npm token to .npmrc (see .npmrc.example) or pass OTP=<code>; aborting"; exit 1; fi; \
+		npm publish --otp="$(OTP)"; \
+	elif [ -n "$(OTP)" ]; then \
+		npm publish --otp="$(OTP)"; \
 	else \
-		if [ -n "$(OTP)" ]; then npm publish --otp="$(OTP)"; else npm publish; fi; \
+		npm publish; \
 	fi
+
+# Verify npm auth resolves from .env without publishing.
+auth:
+	@npm whoami
 
 gh-release:
 	@if gh release view "$(TAG)" >/dev/null 2>&1; then \
