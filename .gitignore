@@ -12,4 +12,4 @@ tests/fixtures/host-plugin/static/build
 tests/fixtures/host-plugin/node_modules
 graphify-out/
 .release-notes.md
-
+.env
