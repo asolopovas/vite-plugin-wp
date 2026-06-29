@@ -1,12 +1,14 @@
 SHELL := /bin/bash
 
 .PHONY: help install build dev test test-unit typecheck lint format format-check quality check clean \
-        release release-patch release-minor release-major \
-        bump tag publish gh-release deploy
+        release release-patch release-minor release-major _release patch minor major \
+        bump tag publish commit-release gh-release deploy
 
 PKG_VERSION := $(shell node -p "require('./package.json').version")
 TAG := v$(PKG_VERSION)
 RELEASE_NOTES_FILE := .release-notes.md
+# Bump level passed as a bare goal, e.g. `make release patch`.
+LEVEL_GOAL := $(filter patch minor major,$(MAKECMDGOALS))
 
 help:
 	@echo "Targets:"
@@ -23,11 +25,12 @@ help:
 	@echo "  check             quality release gate"
 	@echo "  clean             remove dist/"
 	@echo ""
-	@echo "Release (runs check, git tag, npm publish, gh release):"
-	@echo "  release           publish the CURRENT package.json version as-is"
-	@echo "  release-patch     bump patch, commit, then release"
-	@echo "  release-minor     bump minor, commit, then release"
-	@echo "  release-major     bump major, commit, then release"
+	@echo "Release (check, npm publish, THEN commit/push/tag/gh release):"
+	@echo "  release             publish the CURRENT package.json version as-is"
+	@echo "  release patch       bump patch, then release (commit only after publish)"
+	@echo "  release minor       bump minor, then release (commit only after publish)"
+	@echo "  release major       bump major, then release (commit only after publish)"
+	@echo "  (dash form also works: release-patch / release-minor / release-major)"
 	@echo "  (idempotent — safe to re-run; OTP=<code> for npm 2FA)"
 	@echo "  (notes: NOTES_FILE=path or NOTES=\"...\"; default --generate-notes)"
 	@echo ""
@@ -119,16 +122,39 @@ gh-release:
 		[ -n "$$created" ] && rm -f "$$created" || true; \
 	fi
 
-release: check
-	@git diff --quiet -- package.json || (echo "package.json has uncommitted changes; commit first"; exit 1)
-	$(MAKE) tag
+commit-release:
+	@if git diff --quiet -- package.json; then \
+		echo "package.json unchanged; nothing to commit"; \
+	else \
+		git add package.json; \
+		git commit -m "chore: release $(TAG)"; \
+		git push origin main; \
+	fi
+
+# Publish is the gate: check runs, then npm publish must succeed BEFORE anything
+# is committed, pushed, or tagged. A failed publish leaves git untouched.
+_release: check
 	$(MAKE) publish OTP="$(OTP)"
+	$(MAKE) commit-release
+	$(MAKE) tag
 	$(MAKE) gh-release
 	@echo "Released $(TAG)"
 
+# `make release`              -> publish CURRENT version as-is.
+# `make release patch|minor|major` -> bump first, then release (space form).
+release:
+	@if [ -n "$(LEVEL_GOAL)" ]; then \
+		$(MAKE) bump LEVEL=$(LEVEL_GOAL) && $(MAKE) _release; \
+	else \
+		$(MAKE) _release; \
+	fi
+
+# Dash form: `make release-patch` etc.
 release-patch release-minor release-major: release-%:
 	$(MAKE) bump LEVEL=$*
-	git add package.json
-	git commit -m "chore: release v`node -p 'require(process.argv[1]).version' ./package.json`"
-	git push origin main
-	$(MAKE) release
+	$(MAKE) _release
+
+# Bare level words are consumed by `release` above; no-op on their own so
+# `make release patch` doesn't error on the second goal.
+patch minor major:
+	@:
