@@ -12,7 +12,12 @@ import {
 } from './config.js'
 import { envModePlugin, hotFilePlugin } from './dev-server.js'
 import { hmrFilterPlugin } from './hmr-filter.js'
-import { addHmrCode, injectBlockHmrForBlocks, injectIndexDepsAccept } from './transforms/block-hmr.js'
+import {
+    addHmrCode,
+    extractInternalImportSpecs,
+    injectBlockHmrForBlocks,
+    injectIndexDepsAccept,
+} from './transforms/block-hmr.js'
 import {
     rewriteWordpressImportsToGlobals,
     transformReactImports,
@@ -95,7 +100,16 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 result = transformReactImports(result)
                 result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
                 if (isEntry) {
-                    result = injectIndexDepsAccept(result, cleanId, hmrLogger)
+                    const fsDeps: string[] = []
+                    if (typeof this?.resolve === 'function') {
+                        for (const spec of extractInternalImportSpecs(code)) {
+                            const resolved = await this.resolve(spec, cleanId)
+                            if (resolved?.id && resolved.id.startsWith('/') && !resolved.id.includes('node_modules')) {
+                                fsDeps.push('/@fs' + resolved.id.split('?')[0])
+                            }
+                        }
+                    }
+                    result = injectIndexDepsAccept(result, fsDeps, hmrLogger)
                 }
 
                 transformCache.set(cacheKey, result)

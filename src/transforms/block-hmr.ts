@@ -1,4 +1,3 @@
-import * as path from 'path'
 import {
     HMR_DEBOUNCE_PLACEHOLDER,
     HMR_DEP_ACCEPT_PLACEHOLDER,
@@ -147,37 +146,31 @@ export async function addHmrCode(
     return hmrCode + '\n' + code
 }
 
-function extractRelativeImports(code: string): Set<string> {
-    const importRegex = /import\s+(?:[^'"\n]+\s+from\s+)?['"](\.[^'"\n]+)['"];?/g
-    const deps = new Set<string>()
+export function extractInternalImportSpecs(code: string): string[] {
+    const importRegex = /import\s+(?:[^'"\n]+\s+from\s+)?['"]([^'"\n]+)['"];?/g
+    const specs = new Set<string>()
     let match: RegExpExecArray | null
 
     while ((match = importRegex.exec(code)) !== null) {
         const spec = match[1]
-        if (spec.startsWith('./') || spec.startsWith('../')) {
-            deps.add(spec)
+        if (isInternalImport(spec)) {
+            specs.add(spec)
         }
     }
 
-    return deps
+    return Array.from(specs)
 }
 
-export function injectIndexDepsAccept(code: string, id: string, hmrLogger: string): string {
+export function injectIndexDepsAccept(code: string, fsDeps: string[], hmrLogger: string): string {
     if (code.includes('wpv-accept-deps')) return code
+    if (fsDeps.length === 0) return code
 
-    const deps = extractRelativeImports(code)
-    if (deps.size === 0) return code
-
-    const importerFsPath = id.startsWith('/@fs/') ? id.slice('/@fs'.length) : id
-    const importerDir = path.dirname(importerFsPath)
-
-    const depsList = Array.from(deps)
-        .map((spec) => `'/@fs${path.resolve(importerDir, spec)}'`)
-        .join(', ')
+    const depsList = fsDeps.map((dep) => `'${dep}'`).join(', ')
 
     return (
         code +
         `
+/* wpv-accept-deps */
 var __wpvHmrLogger = __wpvHmrLogger ?? ${hmrLogger};
 if (import.meta.hot) {
   import.meta.hot.accept([${depsList}], (mods) => {
