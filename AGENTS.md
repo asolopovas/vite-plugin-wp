@@ -12,13 +12,20 @@ Humans steer; agents execute. Treat the repo as source of truth and keep this fi
 
 ## Docs map
 
+Topic files at repo root; supporting docs under `docs/`.
+
 - `README.md` — public usage and options.
-- `docs/README.md` — docs index.
-- `docs/ARCHITECTURE.md` — structure and invariants.
+- `ARCHITECTURE.md` — structure and invariants.
+- `PRODUCT_SENSE.md` — users, jobs, non-goals.
+- `QUALITY_SCORE.md` — quality bar and no-comments gate.
+- `SECURITY.md` — secret/credential handling.
+- `RELIABILITY.md` — side-effect and release recovery.
+- `DESIGN.md`, `FRONTEND.md` — UI/browser surface (mostly N/A; see files).
+- `PLANS.md` — roadmap and exec-plan template.
+- `docs/README.md` — supporting-docs index.
 - `docs/COMMANDS.md` — commands, tests, e2e, browser workflow.
 - `docs/RELEASE.md` — release flow and recovery.
 - `docs/AGENT_WORKFLOW.md` — agent workflow.
-- `docs/EXECUTION_PLANS.md` — checked-in plan template.
 
 ## Release
 
