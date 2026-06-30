@@ -123,28 +123,43 @@ export function hmrFilterPlugin(baseDir: string, editorCss: string): Plugin {
             server.watcher.prependListener('add', onCssWatch)
             server.watcher.prependListener('unlink', onCssWatch)
 
-            const invalidateEditorEntry = (): void => {
+            const buildEditorEntryUpdate = () => {
+                const timestamp = Date.now()
+                const updates = new Map<string, { type: 'js-update' | 'css-update'; path: string }>()
+
                 for (const env of Object.values(server.environments ?? {})) {
                     const graph = env?.moduleGraph
                     const mods = graph?.getModulesByFile?.(editorCssPath)
                     if (!mods) continue
-                    for (const mod of mods) graph!.invalidateModule(mod, new Set(), Date.now(), true)
+                    for (const mod of mods) {
+                        graph!.invalidateModule(mod, new Set(), timestamp, true)
+                        const url = (mod as { url?: string; id?: string }).url || (mod as { id?: string }).id
+                        if (!url || updates.has(url)) continue
+                        const isCss = url.includes('?') && (url.includes('direct') || url.includes('inline'))
+                        updates.set(url, { type: isCss ? 'css-update' : 'js-update', path: url })
+                    }
                 }
-            }
 
-            const editorEntryUpdate = () => ({
-                type: 'update' as const,
-                updates: [
-                    {
-                        type: 'js-update' as const,
-                        path: EDITOR_CSS_URL,
-                        acceptedPath: EDITOR_CSS_URL,
-                        timestamp: Date.now(),
+                if (![...updates.values()].some((u) => u.type === 'css-update')) {
+                    const directPath = `${EDITOR_CSS_URL}?direct`
+                    updates.set(directPath, { type: 'css-update', path: directPath })
+                }
+                if (![...updates.values()].some((u) => u.type === 'js-update')) {
+                    updates.set(EDITOR_CSS_URL, { type: 'js-update', path: EDITOR_CSS_URL })
+                }
+
+                return {
+                    type: 'update' as const,
+                    updates: [...updates.values()].map((u) => ({
+                        type: u.type,
+                        path: u.path,
+                        acceptedPath: u.path,
+                        timestamp,
                         explicitImportRequired: false,
                         isWithinCircularImport: false,
-                    },
-                ],
-            })
+                    })),
+                }
+            }
 
             type HotChannel = { send?: (...args: unknown[]) => void; __wpvHmrWrapped?: boolean }
 
@@ -157,8 +172,7 @@ export function hmrFilterPlugin(baseDir: string, editorCss: string): Plugin {
                 channel.send = (...args: unknown[]): void => {
                     if (isFullReload(args[0]) && Date.now() - pendingPartialChangeAt < PARTIAL_RELOAD_WINDOW_MS) {
                         pendingPartialChangeAt = 0
-                        invalidateEditorEntry()
-                        original(editorEntryUpdate())
+                        original(buildEditorEntryUpdate())
                         return
                     }
                     original(...args)
