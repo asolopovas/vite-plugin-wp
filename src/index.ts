@@ -17,6 +17,7 @@ import {
     extractInternalImportSpecs,
     injectBlockHmrForBlocks,
     injectIndexDepsAccept,
+    injectPluginHmr,
 } from './transforms/block-hmr.js'
 import {
     rewriteWordpressImportsToGlobals,
@@ -99,6 +100,7 @@ export default function vitePluginWp(options: WpPluginOptions = {}): Plugin[] {
                 result = transformWordpressImports(result)
                 result = transformReactImports(result)
                 result = await injectBlockHmrForBlocks(result, cleanId, hmrLogger)
+                result = injectPluginHmr(result, cleanId)
                 if (isEntry) {
                     const fsDeps: string[] = []
                     if (typeof this?.resolve === 'function') {

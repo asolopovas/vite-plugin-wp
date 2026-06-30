@@ -65,11 +65,19 @@ function shouldInjectBlockHmr(code: string, id: string): boolean {
 
     if (code.includes('__wpvApplyBlockHmr') || code.includes('__wpvSetupBlockHmr')) return false
 
-    if (!META.decl.test(code)) return false
+    if (!hasSymbol(META, code)) return false
     if (!hasSymbol(EDIT, code)) return false
     if (!hasSymbol(SAVE, code)) return false
 
     return true
+}
+
+function isBlockIndexModule(code: string, id: string): boolean {
+    if (!code.includes('registerBlockType')) return false
+    const cleanId = id.split('?')[0]
+    if (!JS_LIKE_EXTENSION.test(cleanId)) return false
+    const normalizedId = cleanId.replace(BACKSLASH_RE, '/')
+    return normalizedId.includes('/src/blocks/') || normalizedId.startsWith('src/blocks/')
 }
 
 function generateDependencyAcceptCode(editImport: string | null, saveImport: string | null): string {
@@ -113,7 +121,16 @@ function generateMissingExports(code: string): string {
 }
 
 export async function injectBlockHmrForBlocks(code: string, id: string, hmrLogger: string): Promise<string> {
-    if (!shouldInjectBlockHmr(code, id)) return code
+    if (!shouldInjectBlockHmr(code, id)) {
+        if (
+            isBlockIndexModule(code, id) &&
+            !code.includes('__wpvBareBlockHmr') &&
+            !code.includes('__wpvApplyBlockHmr')
+        ) {
+            return code + '\n/* __wpvBareBlockHmr */\nif (import.meta.hot) { import.meta.hot.accept(() => {}) }\n'
+        }
+        return code
+    }
 
     const editImport = findImportSource(code, EDIT)
     const saveImport = findImportSource(code, SAVE)
@@ -128,6 +145,59 @@ export async function injectBlockHmrForBlocks(code: string, id: string, hmrLogge
         .replace(`${HMR_DEP_ACCEPT_PLACEHOLDER}\n`, normalizedDepAccept)
 
     return code + injection
+}
+
+const HOOK_REGISTER_RE = /\badd(Filter|Action)\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/g
+
+function isPluginModule(code: string, id: string): boolean {
+    const cleanId = id.split('?')[0]
+    if (!JS_LIKE_EXTENSION.test(cleanId)) return false
+    const normalizedId = cleanId.replace(BACKSLASH_RE, '/')
+    if (!normalizedId.includes('/src/plugins/') && !normalizedId.startsWith('src/plugins/')) return false
+    return /\badd(Filter|Action)\s*\(/.test(code)
+}
+
+function extractRegisteredHooks(code: string): Array<{ api: string; hook: string; namespace: string }> {
+    const hooks: Array<{ api: string; hook: string; namespace: string }> = []
+    const seen = new Set<string>()
+    let match: RegExpExecArray | null
+    HOOK_REGISTER_RE.lastIndex = 0
+    while ((match = HOOK_REGISTER_RE.exec(code)) !== null) {
+        const api = match[1] === 'Filter' ? 'removeFilter' : 'removeAction'
+        const key = `${api}|${match[2]}|${match[3]}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        hooks.push({ api, hook: match[2], namespace: match[3] })
+    }
+    return hooks
+}
+
+export function injectPluginHmr(code: string, id: string): string {
+    if (code.includes('__wpvPluginHmr') || code.includes('__wpvApplyBlockHmr') || code.includes('__wpvBareBlockHmr')) {
+        return code
+    }
+    if (!isPluginModule(code, id)) return code
+
+    const hooks = extractRegisteredHooks(code)
+    if (hooks.length === 0) return code
+
+    const removals = hooks.map((h) => `h.${h.api}('${h.hook}', '${h.namespace}')`).join('; ')
+
+    return (
+        code +
+        `
+/* __wpvPluginHmr */
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {})
+  import.meta.hot.dispose(() => {
+    try {
+      const h = typeof window !== 'undefined' && window.wp && window.wp.hooks
+      if (h) { ${removals} }
+    } catch (e) {}
+  })
+}
+`
+    )
 }
 
 const loadHmrTemplate = createTemplateLoader(TEMPLATE_PATHS.hmr)
